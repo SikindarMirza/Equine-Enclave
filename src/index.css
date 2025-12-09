@@ -1,0 +1,39 @@
+:root {
+  /* Earthy, luxurious palette */
+  --color-cream: #F5F0E8;
+  --color-sand: #E8DFD0;
+  --color-tan: #C4A77D;
+  --color-chestnut: #8B4513;
+  --color-mahogany: #5C3317;
+  --color-espresso: #2C1810;
+  --color-forest: #2D4739;
+  --color-sage: #9CAF88;
+  --color-gold: #D4AF37;
+  
+  --font-display: 'Cormorant Garamond', serif;
+  --font-body: 'Outfit', sans-serif;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-body);
+  background-color: var(--color-cream);
+  color: var(--color-espresso);
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+::selection {
+  background-color: var(--color-tan);
+  color: var(--color-espresso);
+}
+
