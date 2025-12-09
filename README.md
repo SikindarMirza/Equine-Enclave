@@ -1,1 +1,1 @@
-# Equine-Enclave
+# equine-enclave
