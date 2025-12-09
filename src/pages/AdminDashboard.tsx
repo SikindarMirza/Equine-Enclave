@@ -73,6 +73,19 @@ function AdminDashboard() {
     name: string;
     time: string;
   }>({ isOpen: false, batchType: 'morning', batchIndex: 0, name: '', time: '' })
+  
+  const [addBatchModal, setAddBatchModal] = useState<{
+    isOpen: boolean;
+    batchType: 'morning' | 'evening';
+    name: string;
+    time: string;
+  }>({ isOpen: false, batchType: 'morning', name: '', time: '' })
+  
+  const [deleteBatchModal, setDeleteBatchModal] = useState<{
+    isOpen: boolean;
+    batch: Batch | null;
+    batchType: 'morning' | 'evening';
+  }>({ isOpen: false, batch: null, batchType: 'morning' })
   const [assignBatchModal, setAssignBatchModal] = useState<{ 
     isOpen: boolean; 
     rider: Rider | null; 
@@ -157,6 +170,60 @@ function AdminDashboard() {
     }
   }
 
+  // Function to add new batch
+  const handleAddBatch = async () => {
+    const { batchType, name, time } = addBatchModal
+    
+    if (!name || !time) {
+      alert('Please fill in all fields')
+      return
+    }
+    
+    try {
+      const response = await fetch(`${API_BASE_URL}/batches`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, time, batchType })
+      })
+      const result = await response.json()
+      
+      if (result.success) {
+        await fetchBatches() // Refresh data
+        setAddBatchModal({ isOpen: false, batchType: 'morning', name: '', time: '' })
+      } else {
+        alert(result.message || 'Failed to add batch')
+      }
+    } catch (err) {
+      console.error('Error adding batch:', err)
+      alert('Failed to add batch')
+    }
+  }
+
+  // Function to delete batch
+  const handleDeleteBatch = async () => {
+    if (!deleteBatchModal.batch?._id) {
+      alert('Cannot delete batch - missing batch ID')
+      return
+    }
+    
+    try {
+      const response = await fetch(`${API_BASE_URL}/batches/${deleteBatchModal.batch._id}`, {
+        method: 'DELETE'
+      })
+      const result = await response.json()
+      
+      if (result.success) {
+        await fetchBatches() // Refresh data
+        setDeleteBatchModal({ isOpen: false, batch: null, batchType: 'morning' })
+      } else {
+        alert(result.message || 'Failed to delete batch')
+      }
+    } catch (err) {
+      console.error('Error deleting batch:', err)
+      alert('Failed to delete batch')
+    }
+  }
+
   // Fetch batches from API
   const fetchBatches = async () => {
     try {
@@ -236,27 +303,31 @@ function AdminDashboard() {
     }> = []
 
     morningBatches.forEach((batch, idx) => {
-      batch.riders.forEach(rider => {
-        allRiders.push({
-          rider,
-          batchType: 'morning',
-          batchIndex: idx,
-          batchName: batch.name,
-          batchTime: batch.time
+      if (batch?.riders) {
+        batch.riders.forEach(rider => {
+          allRiders.push({
+            rider,
+            batchType: 'morning',
+            batchIndex: idx,
+            batchName: batch.name || '',
+            batchTime: batch.time || ''
+          })
         })
-      })
+      }
     })
 
     eveningBatches.forEach((batch, idx) => {
-      batch.riders.forEach(rider => {
-        allRiders.push({
-          rider,
-          batchType: 'evening',
-          batchIndex: idx,
-          batchName: batch.name,
-          batchTime: batch.time
+      if (batch?.riders) {
+        batch.riders.forEach(rider => {
+          allRiders.push({
+            rider,
+            batchType: 'evening',
+            batchIndex: idx,
+            batchName: batch.name || '',
+            batchTime: batch.time || ''
+          })
         })
-      })
+      }
     })
 
     return allRiders
@@ -343,9 +414,9 @@ function AdminDashboard() {
   // Get count of riders with payment due
   const getPaymentDueCount = () => {
     const morningDue = morningBatches.reduce((acc, batch) => 
-      acc + batch.riders.filter(r => needsToPay(r)).length, 0)
+      acc + (batch?.riders?.filter(r => needsToPay(r))?.length || 0), 0)
     const eveningDue = eveningBatches.reduce((acc, batch) => 
-      acc + batch.riders.filter(r => needsToPay(r)).length, 0)
+      acc + (batch?.riders?.filter(r => needsToPay(r))?.length || 0), 0)
     return morningDue + eveningDue
   }
 
@@ -490,8 +561,8 @@ function AdminDashboard() {
   }
 
   const getTotalRiders = () => {
-    const morningTotal = morningBatches.reduce((acc, batch) => acc + batch.riders.length, 0)
-    const eveningTotal = eveningBatches.reduce((acc, batch) => acc + batch.riders.length, 0)
+    const morningTotal = morningBatches.reduce((acc, batch) => acc + (batch?.riders?.length || 0), 0)
+    const eveningTotal = eveningBatches.reduce((acc, batch) => acc + (batch?.riders?.length || 0), 0)
     return morningTotal + eveningTotal
   }
 
@@ -767,11 +838,11 @@ function AdminDashboard() {
           <span className="riders-stat__label">Total Riders</span>
         </div>
         <div className="riders-stat riders-stat--morning">
-          <span className="riders-stat__value">{morningBatches.reduce((acc, b) => acc + b.riders.length, 0)}</span>
+          <span className="riders-stat__value">{morningBatches.reduce((acc, b) => acc + (b?.riders?.length || 0), 0)}</span>
           <span className="riders-stat__label">Morning Batch</span>
         </div>
         <div className="riders-stat riders-stat--evening">
-          <span className="riders-stat__value">{eveningBatches.reduce((acc, b) => acc + b.riders.length, 0)}</span>
+          <span className="riders-stat__value">{eveningBatches.reduce((acc, b) => acc + (b?.riders?.length || 0), 0)}</span>
           <span className="riders-stat__label">Evening Batch</span>
         </div>
       </div>
@@ -878,16 +949,22 @@ function AdminDashboard() {
           <span className="batch-section__icon">🌅</span>
           <h2 className="batch-section__title">Morning Batches</h2>
           <span className="batch-section__count">{morningBatches.length} batches</span>
+          <button 
+            className="add-batch-btn"
+            onClick={() => setAddBatchModal({ isOpen: true, batchType: 'morning', name: '', time: '' })}
+          >
+            + Add Batch
+          </button>
         </div>
 
         <div className="batches-container">
-          {morningBatches.map((batch, index) => {
+          {morningBatches.filter(batch => batch != null).map((batch, index) => {
             const batchId = `morning-batch${index + 1}`
             const isExpanded = expandedBatches.includes(batchId)
             return (
               <div key={batchId} className={`batch-card ${isExpanded ? 'batch-card--expanded' : ''}`}>
-                <div className="batch-card__header">
-                  <div className="batch-card__info" onClick={() => toggleBatch(batchId)}>
+                <div className="batch-card__header" onClick={() => toggleBatch(batchId)}>
+                  <div className="batch-card__info">
                     <h3 className="batch-card__name">{batch.name}</h3>
                     <span className="batch-card__time">⏰ {batch.time}</span>
                   </div>
@@ -902,13 +979,25 @@ function AdminDashboard() {
                     >
                       ✏️
                     </button>
-                    <span className="batch-card__rider-count" onClick={() => toggleBatch(batchId)}>
+                    {index >= 3 && (
+                      <button 
+                        className="batch-delete-btn"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setDeleteBatchModal({ isOpen: true, batch, batchType: 'morning' })
+                        }}
+                        title="Delete batch"
+                      >
+                        🗑️
+                      </button>
+                    )}
+                    <span className="batch-card__rider-count">
                       {filterRiders(batch.riders).length} riders
                       {riderFilter === 'payment-due' && filterRiders(batch.riders).length !== batch.riders.length && 
                         ` (of ${batch.riders.length})`
                       }
                     </span>
-                    <span className={`batch-card__toggle ${isExpanded ? 'batch-card__toggle--open' : ''}`} onClick={() => toggleBatch(batchId)}>▼</span>
+                    <span className={`batch-card__toggle ${isExpanded ? 'batch-card__toggle--open' : ''}`}>▼</span>
                   </div>
                 </div>
 
@@ -995,16 +1084,22 @@ function AdminDashboard() {
           <span className="batch-section__icon">🌆</span>
           <h2 className="batch-section__title">Evening Batches</h2>
           <span className="batch-section__count">{eveningBatches.length} batches</span>
+          <button 
+            className="add-batch-btn"
+            onClick={() => setAddBatchModal({ isOpen: true, batchType: 'evening', name: '', time: '' })}
+          >
+            + Add Batch
+          </button>
         </div>
 
         <div className="batches-container">
-          {eveningBatches.map((batch, index) => {
+          {eveningBatches.filter(batch => batch != null).map((batch, index) => {
             const batchId = `evening-batch${index + 1}`
             const isExpanded = expandedBatches.includes(batchId)
             return (
               <div key={batchId} className={`batch-card ${isExpanded ? 'batch-card--expanded' : ''}`}>
-                <div className="batch-card__header">
-                  <div className="batch-card__info" onClick={() => toggleBatch(batchId)}>
+                <div className="batch-card__header" onClick={() => toggleBatch(batchId)}>
+                  <div className="batch-card__info">
                     <h3 className="batch-card__name">{batch.name}</h3>
                     <span className="batch-card__time">⏰ {batch.time}</span>
                   </div>
@@ -1019,13 +1114,25 @@ function AdminDashboard() {
                     >
                       ✏️
                     </button>
-                    <span className="batch-card__rider-count" onClick={() => toggleBatch(batchId)}>
+                    {index >= 3 && (
+                      <button 
+                        className="batch-delete-btn"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setDeleteBatchModal({ isOpen: true, batch, batchType: 'evening' })
+                        }}
+                        title="Delete batch"
+                      >
+                        🗑️
+                      </button>
+                    )}
+                    <span className="batch-card__rider-count">
                       {filterRiders(batch.riders).length} riders
                       {riderFilter === 'payment-due' && filterRiders(batch.riders).length !== batch.riders.length && 
                         ` (of ${batch.riders.length})`
                       }
                     </span>
-                    <span className={`batch-card__toggle ${isExpanded ? 'batch-card__toggle--open' : ''}`} onClick={() => toggleBatch(batchId)}>▼</span>
+                    <span className={`batch-card__toggle ${isExpanded ? 'batch-card__toggle--open' : ''}`}>▼</span>
                   </div>
                 </div>
 
@@ -1392,6 +1499,119 @@ function AdminDashboard() {
         </div>
       )}
 
+      {/* Delete Batch Confirmation Modal */}
+      {deleteBatchModal.isOpen && deleteBatchModal.batch && (
+        <div className="modal-overlay" onClick={() => setDeleteBatchModal({ isOpen: false, batch: null, batchType: 'morning' })}>
+          <div className="modal modal--delete-batch" onClick={(e) => e.stopPropagation()}>
+            <div className="modal__header">
+              <h2 className="modal__title">⚠️ Delete Batch</h2>
+              <button 
+                className="modal__close"
+                onClick={() => setDeleteBatchModal({ isOpen: false, batch: null, batchType: 'morning' })}
+              >
+                ✕
+              </button>
+            </div>
+            <div className="modal__body">
+              <div className="delete-batch-info">
+                <span className="delete-batch-type">
+                  {deleteBatchModal.batchType === 'morning' ? '🌅 Morning' : '🌆 Evening'}
+                </span>
+                <h3 className="delete-batch-name">{deleteBatchModal.batch.name}</h3>
+                <p className="delete-batch-time">{deleteBatchModal.batch.time}</p>
+              </div>
+              {deleteBatchModal.batch.riders.length > 0 ? (
+                <div className="delete-batch-warning">
+                  <p>⚠️ This batch has <strong>{deleteBatchModal.batch.riders.length} rider(s)</strong> assigned.</p>
+                  <p>Please move all riders to another batch before deleting.</p>
+                </div>
+              ) : (
+                <p className="delete-batch-message">
+                  Are you sure you want to delete this batch? This action cannot be undone.
+                </p>
+              )}
+            </div>
+            <div className="modal__footer">
+              <button 
+                className="modal__btn modal__btn--cancel"
+                onClick={() => setDeleteBatchModal({ isOpen: false, batch: null, batchType: 'morning' })}
+              >
+                Cancel
+              </button>
+              <button 
+                className="modal__btn modal__btn--danger"
+                onClick={handleDeleteBatch}
+                disabled={deleteBatchModal.batch.riders.length > 0}
+              >
+                Delete Batch
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add New Batch Modal */}
+      {addBatchModal.isOpen && (
+        <div className="modal-overlay" onClick={() => setAddBatchModal({ isOpen: false, batchType: 'morning', name: '', time: '' })}>
+          <div className="modal modal--add-batch" onClick={(e) => e.stopPropagation()}>
+            <div className="modal__header">
+              <h2 className="modal__title">➕ Add New Batch</h2>
+              <button 
+                className="modal__close"
+                onClick={() => setAddBatchModal({ isOpen: false, batchType: 'morning', name: '', time: '' })}
+              >
+                ✕
+              </button>
+            </div>
+            <div className="modal__body">
+              <div className="edit-batch-info">
+                <span className="edit-batch-type">
+                  {addBatchModal.batchType === 'morning' ? '🌅 Morning' : '🌆 Evening'}
+                </span>
+              </div>
+              <form className="edit-batch-form" onSubmit={(e) => { e.preventDefault(); handleAddBatch(); }}>
+                <div className="form-field">
+                  <label htmlFor="new-batch-name">Batch Name *</label>
+                  <input
+                    type="text"
+                    id="new-batch-name"
+                    value={addBatchModal.name}
+                    onChange={(e) => setAddBatchModal(prev => ({ ...prev, name: e.target.value }))}
+                    placeholder="e.g., Batch 4, Weekend Special"
+                    required
+                  />
+                </div>
+                <div className="form-field">
+                  <label htmlFor="new-batch-time">Timing *</label>
+                  <input
+                    type="text"
+                    id="new-batch-time"
+                    value={addBatchModal.time}
+                    onChange={(e) => setAddBatchModal(prev => ({ ...prev, time: e.target.value }))}
+                    placeholder="e.g., 10:30 AM - 12:00 PM"
+                    required
+                  />
+                </div>
+              </form>
+            </div>
+            <div className="modal__footer">
+              <button 
+                className="modal__btn modal__btn--cancel"
+                onClick={() => setAddBatchModal({ isOpen: false, batchType: 'morning', name: '', time: '' })}
+              >
+                Cancel
+              </button>
+              <button 
+                className="modal__btn modal__btn--confirm"
+                onClick={handleAddBatch}
+              >
+                Add Batch
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Add New Rider Modal */}
       {addRiderModal && (
         <div className="modal-overlay" onClick={() => setAddRiderModal(false)}>
@@ -1476,7 +1696,7 @@ function AdminDashboard() {
                   <div className="batch-select-grid">
                     <div className="batch-select-group">
                       <span className="batch-select-label">🌅 Morning</span>
-                      {morningBatches.map((batch, idx) => (
+                      {morningBatches.filter(b => b != null).map((batch, idx) => (
                         <label key={`morning-${idx}`} className="batch-radio">
                           <input
                             type="radio"
@@ -1493,7 +1713,7 @@ function AdminDashboard() {
                     </div>
                     <div className="batch-select-group">
                       <span className="batch-select-label">🌆 Evening</span>
-                      {eveningBatches.map((batch, idx) => (
+                      {eveningBatches.filter(b => b != null).map((batch, idx) => (
                         <label key={`evening-${idx}`} className="batch-radio">
                           <input
                             type="radio"
@@ -1564,7 +1784,7 @@ function AdminDashboard() {
                 <div className="batch-selection__group">
                   <h5 className="batch-selection__group-title">🌅 Morning Batches</h5>
                   <div className="batch-selection__options">
-                    {morningBatches.map((batch, idx) => {
+                    {morningBatches.filter(b => b != null).map((batch, idx) => {
                       const isCurrent = assignBatchModal.sourceBatchType === 'morning' && assignBatchModal.sourceBatchIndex === idx
                       return (
                         <button
@@ -1586,7 +1806,7 @@ function AdminDashboard() {
                 <div className="batch-selection__group">
                   <h5 className="batch-selection__group-title">🌆 Evening Batches</h5>
                   <div className="batch-selection__options">
-                    {eveningBatches.map((batch, idx) => {
+                    {eveningBatches.filter(b => b != null).map((batch, idx) => {
                       const isCurrent = assignBatchModal.sourceBatchType === 'evening' && assignBatchModal.sourceBatchIndex === idx
                       return (
                         <button

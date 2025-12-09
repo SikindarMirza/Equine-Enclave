@@ -182,10 +182,10 @@ router.post('/', async (req, res) => {
     }
     
     // Validate batchIndex
-    if (batchIndex < 0 || batchIndex > 2) {
+    if (batchIndex < 0 || batchIndex > 10) {
       return res.status(400).json({
         success: false,
-        message: 'batchIndex must be between 0 and 2'
+        message: 'batchIndex must be between 0 and 10'
       });
     }
     
@@ -354,10 +354,10 @@ router.patch('/:id/move', async (req, res) => {
       });
     }
     
-    if (targetBatchIndex < 0 || targetBatchIndex > 2) {
+    if (targetBatchIndex < 0 || targetBatchIndex > 10) {
       return res.status(400).json({
         success: false,
-        message: 'targetBatchIndex must be between 0 and 2'
+        message: 'targetBatchIndex must be between 0 and 10'
       });
     }
     

@@ -58,6 +58,85 @@ router.put('/:id', async (req, res) => {
   }
 });
 
+// POST create new batch
+router.post('/', async (req, res) => {
+  try {
+    const { name, time, batchType } = req.body;
+    
+    // Validation
+    if (!name || !time || !batchType) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing required fields: name, time, batchType'
+      });
+    }
+    
+    // Find the next available batchIndex for this type
+    const existingBatches = await Batch.find({ batchType }).sort({ batchIndex: -1 });
+    const nextIndex = existingBatches.length > 0 ? existingBatches[0].batchIndex + 1 : 0;
+    
+    const newBatch = new Batch({
+      name,
+      time,
+      batchType,
+      batchIndex: nextIndex
+    });
+    
+    const savedBatch = await newBatch.save();
+    
+    res.status(201).json({
+      success: true,
+      message: 'Batch created successfully',
+      data: savedBatch
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
+// DELETE batch
+router.delete('/:id', async (req, res) => {
+  try {
+    const batch = await Batch.findById(req.params.id);
+    
+    if (!batch) {
+      return res.status(404).json({
+        success: false,
+        message: 'Batch not found'
+      });
+    }
+    
+    // Check if there are riders in this batch
+    const Rider = require('../models/Rider');
+    const ridersInBatch = await Rider.countDocuments({ 
+      batchType: batch.batchType, 
+      batchIndex: batch.batchIndex 
+    });
+    
+    if (ridersInBatch > 0) {
+      return res.status(400).json({
+        success: false,
+        message: `Cannot delete batch. ${ridersInBatch} rider(s) are assigned to this batch. Please move them first.`
+      });
+    }
+    
+    await Batch.findByIdAndDelete(req.params.id);
+    
+    res.json({
+      success: true,
+      message: 'Batch deleted successfully'
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
 // PUT update batch by type and index
 router.put('/by-type/:batchType/:batchIndex', async (req, res) => {
   try {

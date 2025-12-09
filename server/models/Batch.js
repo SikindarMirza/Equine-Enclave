@@ -20,7 +20,7 @@ const batchSchema = new mongoose.Schema({
     type: Number,
     required: true,
     min: 0,
-    max: 2
+    max: 10
   }
 }, {
   timestamps: true

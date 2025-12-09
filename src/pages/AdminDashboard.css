@@ -1166,6 +1166,110 @@
   color: #5a6484;
 }
 
+/* Add Batch Button */
+.add-batch-btn {
+  margin-left: auto;
+  padding: 0.5rem 1rem;
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.2) 0%, rgba(196, 167, 125, 0.2) 100%);
+  border: 1px solid rgba(212, 175, 55, 0.4);
+  border-radius: 8px;
+  color: #d4af37;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.add-batch-btn:hover {
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.3) 0%, rgba(196, 167, 125, 0.3) 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(212, 175, 55, 0.2);
+}
+
+/* Add Batch Modal */
+.modal--add-batch {
+  max-width: 420px;
+}
+
+/* Batch Delete Button */
+.batch-delete-btn {
+  background: rgba(231, 76, 60, 0.15);
+  border: 1px solid rgba(231, 76, 60, 0.3);
+  border-radius: 6px;
+  padding: 0.35rem 0.5rem;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: all 0.2s ease;
+  margin-right: 0.75rem;
+}
+
+.batch-delete-btn:hover {
+  background: rgba(231, 76, 60, 0.25);
+  transform: scale(1.1);
+}
+
+/* Delete Batch Modal */
+.modal--delete-batch {
+  max-width: 420px;
+}
+
+.delete-batch-info {
+  text-align: center;
+  margin-bottom: 1.5rem;
+  padding: 1.25rem;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 12px;
+}
+
+.delete-batch-type {
+  display: inline-block;
+  padding: 0.35rem 0.75rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 15px;
+  font-size: 0.8rem;
+  color: #8892b0;
+  margin-bottom: 0.75rem;
+}
+
+.delete-batch-name {
+  font-size: 1.25rem;
+  color: #f0f0f0;
+  margin: 0 0 0.35rem 0;
+}
+
+.delete-batch-time {
+  font-size: 0.9rem;
+  color: #8892b0;
+  margin: 0;
+}
+
+.delete-batch-warning {
+  background: rgba(231, 76, 60, 0.1);
+  border: 1px solid rgba(231, 76, 60, 0.3);
+  border-radius: 10px;
+  padding: 1rem;
+  color: #e74c3c;
+  text-align: center;
+}
+
+.delete-batch-warning p {
+  margin: 0.5rem 0;
+}
+
+.delete-batch-message {
+  text-align: center;
+  color: #ccd6f6;
+  line-height: 1.6;
+}
+
+.modal__btn--danger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
 /* All Riders Section */
 .all-riders-section {
   margin-bottom: 2rem;
