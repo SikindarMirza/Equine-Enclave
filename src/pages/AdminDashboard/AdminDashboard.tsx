@@ -155,9 +155,14 @@ function AdminDashboard() {
   const [showSearchResults, setShowSearchResults] = useState(false)
   const [selectedRiderId, setSelectedRiderId] = useState<string | null>(null)
   const [tableSearchFilter, setTableSearchFilter] = useState('')
+  const [maxPersonsDropdownOpen, setMaxPersonsDropdownOpen] = useState(false)
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
     const savedTheme = localStorage.getItem('admin-theme')
     return (savedTheme as 'dark' | 'light') || 'dark'
+  })
+  const [maxPersonsPerBatch, setMaxPersonsPerBatch] = useState<number>(() => {
+    const saved = localStorage.getItem('max-persons-per-batch')
+    return saved ? parseInt(saved) : 5
   })
 
   // Theme toggle handler
@@ -165,6 +170,17 @@ function AdminDashboard() {
     const newTheme = theme === 'dark' ? 'light' : 'dark'
     setTheme(newTheme)
     localStorage.setItem('admin-theme', newTheme)
+  }
+
+  // Max persons per batch handler
+  const handleMaxPersonsChange = (value: number) => {
+    setMaxPersonsPerBatch(value)
+    localStorage.setItem('max-persons-per-batch', value.toString())
+  }
+
+  // Check if batch is full
+  const isBatchFull = (batch: Batch) => {
+    return batch.riders.length >= maxPersonsPerBatch
   }
 
   // Check authentication on mount
@@ -1197,11 +1213,12 @@ function AdminDashboard() {
                         🗑️
                       </button>
                     )}
-                    <span className="batch-card__rider-count">
-                      {filterRiders(batch.riders).length} riders
+                    <span className={`batch-card__rider-count ${isBatchFull(batch) ? 'batch-card__rider-count--full' : ''}`}>
+                      {batch.riders.length}/{maxPersonsPerBatch}
                       {riderFilter === 'payment-due' && filterRiders(batch.riders).length !== batch.riders.length && 
-                        ` (of ${batch.riders.length})`
+                        ` (${filterRiders(batch.riders).length} due)`
                       }
+                      {isBatchFull(batch) && ' • Full'}
                     </span>
                     <span className={`batch-card__toggle ${isExpanded ? 'batch-card__toggle--open' : ''}`}>▼</span>
                   </div>
@@ -1332,11 +1349,12 @@ function AdminDashboard() {
                         🗑️
                       </button>
                     )}
-                    <span className="batch-card__rider-count">
-                      {filterRiders(batch.riders).length} riders
+                    <span className={`batch-card__rider-count ${isBatchFull(batch) ? 'batch-card__rider-count--full' : ''}`}>
+                      {batch.riders.length}/{maxPersonsPerBatch}
                       {riderFilter === 'payment-due' && filterRiders(batch.riders).length !== batch.riders.length && 
-                        ` (of ${batch.riders.length})`
+                        ` (${filterRiders(batch.riders).length} due)`
                       }
+                      {isBatchFull(batch) && ' • Full'}
                     </span>
                     <span className={`batch-card__toggle ${isExpanded ? 'batch-card__toggle--open' : ''}`}>▼</span>
                   </div>
@@ -1902,37 +1920,61 @@ function AdminDashboard() {
                   <div className="batch-select-grid">
                     <div className="batch-select-group">
                       <span className="batch-select-label">🌅 Morning</span>
-                      {morningBatches.filter(b => b != null).map((batch, idx) => (
-                        <label key={`morning-${idx}`} className="batch-radio">
-                          <input
-                            type="radio"
-                            name="batch"
-                            checked={newRider.batchType === 'morning' && newRider.batchIndex === idx}
-                            onChange={() => setNewRider(prev => ({ ...prev, batchType: 'morning', batchIndex: idx }))}
-                          />
-                          <span className="batch-radio__content">
-                            <span className="batch-radio__name">{batch.name}</span>
-                            <span className="batch-radio__time">{batch.time}</span>
-                          </span>
-                        </label>
-                      ))}
+                      {morningBatches.filter(b => b != null).map((batch, idx) => {
+                        const isFull = isBatchFull(batch)
+                        return (
+                          <label 
+                            key={`morning-${idx}`} 
+                            className={`batch-radio ${isFull ? 'batch-radio--disabled' : ''}`}
+                            title={isFull ? `Batch full (${batch.riders.length}/${maxPersonsPerBatch})` : ''}
+                          >
+                            <input
+                              type="radio"
+                              name="batch"
+                              checked={newRider.batchType === 'morning' && newRider.batchIndex === idx}
+                              onChange={() => setNewRider(prev => ({ ...prev, batchType: 'morning', batchIndex: idx }))}
+                              disabled={isFull}
+                            />
+                            <span className="batch-radio__content">
+                              <span className="batch-radio__name">{batch.name}</span>
+                              <span className="batch-radio__time">{batch.time}</span>
+                              <span className={`batch-radio__capacity ${isFull ? 'batch-radio__capacity--full' : ''}`}>
+                                {batch.riders.length}/{maxPersonsPerBatch}
+                                {isFull && ' (Full)'}
+                              </span>
+                            </span>
+                          </label>
+                        )
+                      })}
                     </div>
                     <div className="batch-select-group">
                       <span className="batch-select-label">🌆 Evening</span>
-                      {eveningBatches.filter(b => b != null).map((batch, idx) => (
-                        <label key={`evening-${idx}`} className="batch-radio">
-                          <input
-                            type="radio"
-                            name="batch"
-                            checked={newRider.batchType === 'evening' && newRider.batchIndex === idx}
-                            onChange={() => setNewRider(prev => ({ ...prev, batchType: 'evening', batchIndex: idx }))}
-                          />
-                          <span className="batch-radio__content">
-                            <span className="batch-radio__name">{batch.name}</span>
-                            <span className="batch-radio__time">{batch.time}</span>
-                          </span>
-                        </label>
-                      ))}
+                      {eveningBatches.filter(b => b != null).map((batch, idx) => {
+                        const isFull = isBatchFull(batch)
+                        return (
+                          <label 
+                            key={`evening-${idx}`} 
+                            className={`batch-radio ${isFull ? 'batch-radio--disabled' : ''}`}
+                            title={isFull ? `Batch full (${batch.riders.length}/${maxPersonsPerBatch})` : ''}
+                          >
+                            <input
+                              type="radio"
+                              name="batch"
+                              checked={newRider.batchType === 'evening' && newRider.batchIndex === idx}
+                              onChange={() => setNewRider(prev => ({ ...prev, batchType: 'evening', batchIndex: idx }))}
+                              disabled={isFull}
+                            />
+                            <span className="batch-radio__content">
+                              <span className="batch-radio__name">{batch.name}</span>
+                              <span className="batch-radio__time">{batch.time}</span>
+                              <span className={`batch-radio__capacity ${isFull ? 'batch-radio__capacity--full' : ''}`}>
+                                {batch.riders.length}/{maxPersonsPerBatch}
+                                {isFull && ' (Full)'}
+                              </span>
+                            </span>
+                          </label>
+                        )
+                      })}
                     </div>
                   </div>
                 </div>
@@ -2037,17 +2079,21 @@ function AdminDashboard() {
                       <div className="batch-selection__options">
                         {morningBatches.filter(b => b != null).map((batch, idx) => {
                           const isCurrent = assignBatchModal.sourceBatchType === 'morning' && assignBatchModal.sourceBatchIndex === idx
+                          const isFull = isBatchFull(batch)
                           return (
                             <button
                               key={`morning-${idx}`}
-                              className={`batch-option ${isCurrent ? 'batch-option--current' : ''}`}
+                              className={`batch-option ${isCurrent ? 'batch-option--current' : ''} ${isFull && !isCurrent ? 'batch-option--full' : ''}`}
                               onClick={() => selectTargetBatch('morning', idx)}
-                              disabled={isCurrent}
+                              disabled={isCurrent || isFull}
                             >
                               <span className="batch-option__name">{batch.name}</span>
                               <span className="batch-option__time">{batch.time}</span>
-                              <span className="batch-option__count">{batch.riders.length} riders</span>
+                              <span className={`batch-option__count ${isFull ? 'batch-option__count--full' : ''}`}>
+                                {batch.riders.length}/{maxPersonsPerBatch}
+                              </span>
                               {isCurrent && <span className="batch-option__current-tag">Current</span>}
+                              {isFull && !isCurrent && <span className="batch-option__full-tag">Full</span>}
                             </button>
                           )
                         })}
@@ -2059,17 +2105,21 @@ function AdminDashboard() {
                       <div className="batch-selection__options">
                         {eveningBatches.filter(b => b != null).map((batch, idx) => {
                           const isCurrent = assignBatchModal.sourceBatchType === 'evening' && assignBatchModal.sourceBatchIndex === idx
+                          const isFull = isBatchFull(batch)
                           return (
                             <button
                               key={`evening-${idx}`}
-                              className={`batch-option ${isCurrent ? 'batch-option--current' : ''}`}
+                              className={`batch-option ${isCurrent ? 'batch-option--current' : ''} ${isFull && !isCurrent ? 'batch-option--full' : ''}`}
                               onClick={() => selectTargetBatch('evening', idx)}
-                              disabled={isCurrent}
+                              disabled={isCurrent || isFull}
                             >
                               <span className="batch-option__name">{batch.name}</span>
                               <span className="batch-option__time">{batch.time}</span>
-                              <span className="batch-option__count">{batch.riders.length} riders</span>
+                              <span className={`batch-option__count ${isFull ? 'batch-option__count--full' : ''}`}>
+                                {batch.riders.length}/{maxPersonsPerBatch}
+                              </span>
                               {isCurrent && <span className="batch-option__current-tag">Current</span>}
+                              {isFull && !isCurrent && <span className="batch-option__full-tag">Full</span>}
                             </button>
                           )
                         })}
@@ -2290,6 +2340,39 @@ function AdminDashboard() {
             <p className="admin__subtitle">{getPageSubtitle()}</p>
           </div>
           <div className="admin__header-right">
+            <div className="max-persons-dropdown">
+              <span className="max-persons-dropdown__label">Max per Batch:</span>
+              <div 
+                className={`max-persons-dropdown__trigger ${maxPersonsDropdownOpen ? 'max-persons-dropdown__trigger--open' : ''}`}
+                onClick={() => setMaxPersonsDropdownOpen(!maxPersonsDropdownOpen)}
+              >
+                <span className="max-persons-dropdown__value">{maxPersonsPerBatch}</span>
+                <span className="max-persons-dropdown__arrow">▼</span>
+              </div>
+              {maxPersonsDropdownOpen && (
+                <>
+                  <div 
+                    className="max-persons-dropdown__overlay" 
+                    onClick={() => setMaxPersonsDropdownOpen(false)}
+                  />
+                  <div className="max-persons-dropdown__menu">
+                    {[5, 6, 7, 8, 9, 10, 12, 15, 20].map(num => (
+                      <div
+                        key={num}
+                        className={`max-persons-dropdown__item ${maxPersonsPerBatch === num ? 'max-persons-dropdown__item--selected' : ''}`}
+                        onClick={() => {
+                          handleMaxPersonsChange(num)
+                          setMaxPersonsDropdownOpen(false)
+                        }}
+                      >
+                        {num}
+                        {maxPersonsPerBatch === num && <span className="max-persons-dropdown__check">✓</span>}
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
             {activeTab === 'riders' && (
               <div className="admin__search">
                 <input 
