@@ -4013,23 +4013,41 @@
   }
   
   .modal__body {
-    padding: 1rem;
+    padding: 0.75rem;
     overflow-y: auto;
-    max-height: calc(90vh - 140px);
+    max-height: calc(90vh - 120px);
   }
   
   .modal__rider-info {
     flex-direction: column;
     text-align: center;
-    gap: 0.75rem;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    margin-bottom: 0.75rem;
   }
   
   .modal__rider-avatar {
-    font-size: 2.5rem;
+    font-size: 2rem;
   }
   
   .modal__rider-name {
-    font-size: 1.1rem;
+    font-size: 1rem;
+  }
+  
+  .modal__rider-meta {
+    font-size: 0.8rem;
+  }
+  
+  .batch-selection {
+    margin-top: 0.5rem;
+  }
+  
+  .batch-selection__title {
+    margin-bottom: 0.5rem;
+  }
+  
+  .batch-selection__group {
+    margin-bottom: 0.75rem;
   }
   
   .modal__footer {
