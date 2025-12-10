@@ -2340,38 +2340,47 @@ function AdminDashboard() {
             <p className="admin__subtitle">{getPageSubtitle()}</p>
           </div>
           <div className="admin__header-right">
-            <div className="max-persons-dropdown">
-              <span className="max-persons-dropdown__label">Max per Batch:</span>
-              <div 
-                className={`max-persons-dropdown__trigger ${maxPersonsDropdownOpen ? 'max-persons-dropdown__trigger--open' : ''}`}
-                onClick={() => setMaxPersonsDropdownOpen(!maxPersonsDropdownOpen)}
-              >
-                <span className="max-persons-dropdown__value">{maxPersonsPerBatch}</span>
-                <span className="max-persons-dropdown__arrow">▼</span>
+            <div className="admin__header-controls">
+              <div className="max-persons-dropdown">
+                <span className="max-persons-dropdown__label">Max per Batch:</span>
+                <div 
+                  className={`max-persons-dropdown__trigger ${maxPersonsDropdownOpen ? 'max-persons-dropdown__trigger--open' : ''}`}
+                  onClick={() => setMaxPersonsDropdownOpen(!maxPersonsDropdownOpen)}
+                >
+                  <span className="max-persons-dropdown__value">{maxPersonsPerBatch}</span>
+                  <span className="max-persons-dropdown__arrow">▼</span>
+                </div>
+                {maxPersonsDropdownOpen && (
+                  <>
+                    <div 
+                      className="max-persons-dropdown__overlay" 
+                      onClick={() => setMaxPersonsDropdownOpen(false)}
+                    />
+                    <div className="max-persons-dropdown__menu">
+                      {[5, 6, 7, 8, 9, 10, 12, 15, 20].map(num => (
+                        <div
+                          key={num}
+                          className={`max-persons-dropdown__item ${maxPersonsPerBatch === num ? 'max-persons-dropdown__item--selected' : ''}`}
+                          onClick={() => {
+                            handleMaxPersonsChange(num)
+                            setMaxPersonsDropdownOpen(false)
+                          }}
+                        >
+                          {num}
+                          {maxPersonsPerBatch === num && <span className="max-persons-dropdown__check">✓</span>}
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
               </div>
-              {maxPersonsDropdownOpen && (
-                <>
-                  <div 
-                    className="max-persons-dropdown__overlay" 
-                    onClick={() => setMaxPersonsDropdownOpen(false)}
-                  />
-                  <div className="max-persons-dropdown__menu">
-                    {[5, 6, 7, 8, 9, 10, 12, 15, 20].map(num => (
-                      <div
-                        key={num}
-                        className={`max-persons-dropdown__item ${maxPersonsPerBatch === num ? 'max-persons-dropdown__item--selected' : ''}`}
-                        onClick={() => {
-                          handleMaxPersonsChange(num)
-                          setMaxPersonsDropdownOpen(false)
-                        }}
-                      >
-                        {num}
-                        {maxPersonsPerBatch === num && <span className="max-persons-dropdown__check">✓</span>}
-                      </div>
-                    ))}
-                  </div>
-                </>
-              )}
+              <button className="admin__logout-btn" onClick={handleLogout} title="Logout">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                  <polyline points="16 17 21 12 16 7"/>
+                  <line x1="21" y1="12" x2="9" y2="12"/>
+                </svg>
+              </button>
             </div>
             {activeTab === 'riders' && (
               <div className="admin__search">
@@ -2432,17 +2441,6 @@ function AdminDashboard() {
                 )}
               </div>
             )}
-            <div className="admin__user-menu">
-              <div className="admin__user">
-                <div className="admin__avatar">
-                  {adminUser?.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'A'}
-                </div>
-                <span className="admin__user-name">{adminUser?.name || 'Admin'}</span>
-              </div>
-              <button className="admin__logout-btn" onClick={handleLogout} title="Logout">
-                🚪
-              </button>
-            </div>
           </div>
         </header>
 

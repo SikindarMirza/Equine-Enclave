@@ -616,28 +616,163 @@
 
   .login-brand-icon {
     margin: 0 auto 1.5rem;
+    width: 60px;
+    height: 60px;
   }
 
   .login-brand-title__line {
     font-size: 2.5rem;
   }
-
+  
+  .login-brand-tagline {
+    font-size: 0.9rem;
+  }
+  
+  .login-horses {
+    opacity: 0.3;
+  }
 }
 
 @media (max-width: 480px) {
+  .login-page {
+    padding: 0;
+  }
+  
   .login-content {
     padding: 1rem;
+    gap: 1.5rem;
   }
 
   .login-card {
-    padding: 2rem 1.5rem;
+    padding: 1.75rem 1.25rem;
+    border-radius: 20px;
+  }
+
+  .login-brand-icon {
+    width: 50px;
+    height: 50px;
+    margin-bottom: 1rem;
   }
 
   .login-brand-title__line {
-    font-size: 2rem;
+    font-size: 1.75rem;
+  }
+  
+  .login-brand-tagline {
+    font-size: 0.8rem;
+    letter-spacing: 0.05em;
   }
 
   .login-title {
-    font-size: 1.75rem;
+    font-size: 1.5rem;
+  }
+  
+  .login-subtitle {
+    font-size: 0.85rem;
+  }
+  
+  .login-form {
+    gap: 1.25rem;
+  }
+  
+  .login-field input {
+    padding: 0.875rem 2.75rem 0.875rem 2.75rem;
+    font-size: 16px; /* Prevents iOS zoom on focus */
+  }
+  
+  .login-input-icon {
+    left: 0.875rem;
+    width: 18px;
+    height: 18px;
+  }
+  
+  .login-password-toggle {
+    right: 0.875rem;
+  }
+  
+  .login-button {
+    padding: 0.875rem 1.5rem;
+  }
+  
+  .login-footer {
+    margin-top: 1.5rem;
+  }
+  
+  .login-footer__divider {
+    font-size: 0.7rem;
+  }
+  
+  /* Reduce background effects on mobile */
+  .login-bg__glow--1 {
+    width: 400px;
+    height: 400px;
+  }
+  
+  .login-bg__glow--2 {
+    width: 300px;
+    height: 300px;
+  }
+  
+  .login-bg__glow--3 {
+    display: none;
+  }
+  
+  .login-particles {
+    opacity: 0.5;
+  }
+  
+  .login-horses {
+    display: none;
+  }
+}
+
+/* Small mobile - very compact */
+@media (max-width: 360px) {
+  .login-brand-title__line {
+    font-size: 1.5rem;
+  }
+  
+  .login-card {
+    padding: 1.5rem 1rem;
+  }
+  
+  .login-title {
+    font-size: 1.35rem;
+  }
+}
+
+/* Touch-friendly targets */
+@media (pointer: coarse) {
+  .login-field input,
+  .login-button {
+    min-height: 48px;
+  }
+  
+  .login-password-toggle {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
+/* Landscape mobile */
+@media (max-height: 600px) and (orientation: landscape) {
+  .login-branding {
+    display: none;
+  }
+  
+  .login-content {
+    max-width: 400px;
+  }
+  
+  .login-card {
+    padding: 1.5rem;
+  }
+  
+  .login-form {
+    gap: 1rem;
+  }
+  
+  .login-footer {
+    margin-top: 1rem;
   }
 }

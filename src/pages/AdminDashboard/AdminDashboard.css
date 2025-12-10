@@ -340,6 +340,12 @@
   gap: 1.25rem;
 }
 
+.admin__header-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
 /* Max Persons Dropdown */
 .max-persons-dropdown {
   position: relative;
@@ -699,20 +705,31 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
-  background: rgba(231, 76, 60, 0.1);
+  width: 42px;
+  height: 42px;
+  background: rgba(231, 76, 60, 0.12);
   border: 1px solid rgba(231, 76, 60, 0.2);
   border-radius: 10px;
-  font-size: 1.1rem;
   cursor: pointer;
   transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.admin__logout-btn svg {
+  width: 18px;
+  height: 18px;
+  color: #e74c3c;
+  transition: transform 0.2s ease;
 }
 
 .admin__logout-btn:hover {
   background: rgba(231, 76, 60, 0.2);
   border-color: rgba(231, 76, 60, 0.4);
   transform: scale(1.05);
+}
+
+.admin__logout-btn:hover svg {
+  transform: translateX(2px);
 }
 
 /* ===========================
@@ -2218,6 +2235,7 @@
   position: fixed;
   bottom: 2rem;
   right: 2rem;
+  z-index: 1100;
   display: flex;
   align-items: center;
   gap: 0.75rem;
@@ -3276,5 +3294,1169 @@
 
 .admin.theme-light .batch-section__count {
   background: rgba(45, 58, 45, 0.08);
+}
+
+/* ===========================
+   Mobile Responsive Styles
+   =========================== */
+
+/* Large Tablet */
+@media (max-width: 1200px) {
+  .admin__content {
+    grid-template-columns: 1fr;
+  }
+  
+  .admin__card--bookings,
+  .admin__card--horses,
+  .admin__card--actions,
+  .admin__card--schedule {
+    grid-column: span 1;
+  }
+}
+
+/* Tablet */
+@media (max-width: 1024px) {
+  .horses-grid {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  }
+  
+  .admin__sidebar {
+    width: 220px;
+    padding: 1.25rem 1rem;
+  }
+  
+  .admin__main {
+    margin-left: 220px;
+  }
+  
+  .admin__stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .riders-table th:nth-child(4),
+  .riders-table td:nth-child(4) {
+    display: none;
+  }
+}
+
+/* Small Tablet / Large Mobile */
+@media (max-width: 900px) {
+  .admin__sidebar {
+    width: 70px;
+    padding: 1rem 0.5rem;
+  }
+  
+  .admin__logo-text {
+    display: none;
+  }
+  
+  .admin__logo {
+    justify-content: center;
+  }
+  
+  .admin__nav-item {
+    justify-content: center;
+    padding: 0.875rem;
+  }
+  
+  .admin__nav-item span:not(.admin__nav-icon) {
+    display: none;
+  }
+  
+  .admin__nav-icon {
+    font-size: 1.35rem;
+  }
+  
+  .admin__sidebar-footer {
+    display: none;
+  }
+  
+  .admin__main {
+    margin-left: 70px;
+    padding: 1rem;
+  }
+  
+  .admin__header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+  
+  .admin__header-right {
+    width: 100%;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+}
+
+/* Mobile - Bottom Navigation */
+@media (max-width: 768px) {
+  .admin {
+    flex-direction: column;
+  }
+  
+  .admin__sidebar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    top: auto;
+    width: 100%;
+    height: auto;
+    flex-direction: row;
+    padding: 0;
+    border-radius: 16px 16px 0 0;
+    border-top: 1px solid var(--border-color);
+    z-index: 1000;
+    background: var(--bg-primary);
+    backdrop-filter: blur(20px);
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3);
+  }
+  
+  .admin__logo {
+    display: none;
+  }
+  
+  .admin__nav {
+    flex-direction: row;
+    width: 100%;
+    padding: 0.5rem 0.25rem;
+    gap: 0;
+    justify-content: space-around;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .admin__nav::-webkit-scrollbar {
+    display: none;
+  }
+  
+  .admin__nav-item {
+    flex-direction: column;
+    padding: 0.6rem 0.5rem;
+    gap: 0.2rem;
+    font-size: 0.6rem;
+    min-width: 60px;
+    flex: 1;
+    text-align: center;
+    border-radius: 8px;
+  }
+  
+  .admin__nav-item span:not(.admin__nav-icon) {
+    display: block;
+    font-size: 0.55rem;
+    line-height: 1.2;
+    white-space: nowrap;
+  }
+  
+  .admin__nav-icon {
+    font-size: 1.2rem;
+  }
+  
+  .admin__nav-item.active {
+    background: var(--accent-gradient);
+  }
+  
+  .admin__main {
+    margin-left: 0;
+    padding: 1rem;
+    padding-bottom: 85px;
+    min-height: 100vh;
+  }
+  
+  .admin__header {
+    padding: 0;
+    margin-bottom: 1rem;
+  }
+  
+  .admin__header-left {
+    width: 100%;
+    margin-bottom: 0.75rem;
+  }
+  
+  .admin__title {
+    font-size: 1.35rem;
+    margin-bottom: 0.25rem;
+  }
+  
+  .admin__subtitle {
+    font-size: 0.8rem;
+  }
+  
+  .admin__header-right {
+    width: 100%;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  /* Header Controls - Mobile */
+  .admin__header-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+  }
+  
+  /* Max Persons Dropdown */
+  .max-persons-dropdown {
+    flex: 1;
+    justify-content: space-between;
+    padding: 0.6rem 0.75rem;
+  }
+  
+  .max-persons-dropdown__menu {
+    left: 0;
+    right: auto;
+    min-width: 120px;
+  }
+  
+  /* Search */
+  .admin__search {
+    width: 100%;
+    position: relative;
+  }
+  
+  .admin__search input {
+    width: 100%;
+    font-size: 16px; /* Prevent iOS zoom */
+    padding: 0.75rem 1rem;
+  }
+  
+  .search-results {
+    position: fixed;
+    left: 1rem;
+    right: 1rem;
+    top: auto;
+    bottom: 90px;
+    width: auto;
+    max-height: 50vh;
+    transform: none;
+    border-radius: 12px;
+  }
+  
+  /* User Menu */
+  .admin__user-menu {
+    width: auto;
+    padding: 0;
+  }
+  
+  .admin__avatar {
+    width: 36px;
+    height: 36px;
+    font-size: 0.8rem;
+  }
+  
+  .admin__user-name {
+    font-size: 0.85rem;
+  }
+  
+  /* Logout Button - Mobile */
+  .admin__logout-btn {
+    width: 38px;
+    height: 38px;
+  }
+  
+  .admin__logout-btn svg {
+    width: 16px;
+    height: 16px;
+  }
+  
+  /* Stats Grid */
+  .admin__stats {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.6rem;
+  }
+  
+  .stat-card {
+    padding: 0.875rem;
+    border-radius: 12px;
+  }
+  
+  .stat-card__icon {
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
+  }
+  
+  .stat-card__value {
+    font-size: 1.35rem;
+  }
+  
+  .stat-card__title {
+    font-size: 0.7rem;
+  }
+  
+  .stat-card__change {
+    font-size: 0.65rem;
+  }
+  
+  /* Content Cards */
+  .admin__card {
+    padding: 1rem;
+    border-radius: 12px;
+    margin-bottom: 0.75rem;
+  }
+  
+  .admin__card-title {
+    font-size: 1rem;
+  }
+  
+  /* Quick Actions */
+  .admin__quick-actions {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
+  }
+  
+  .quick-action {
+    padding: 0.875rem;
+  }
+  
+  .quick-action__icon {
+    font-size: 1.25rem;
+  }
+  
+  .quick-action__label {
+    font-size: 0.7rem;
+  }
+  
+  /* Riders Page */
+  .riders-page {
+    padding: 0;
+  }
+  
+  .riders-stats {
+    display: flex;
+    flex-direction: row;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 0.25rem;
+  }
+  
+  .riders-stats::-webkit-scrollbar {
+    display: none;
+  }
+  
+  .riders-stat {
+    flex: 1;
+    min-width: 0;
+    padding: 0.6rem 0.5rem;
+    border-radius: 10px;
+    text-align: center;
+  }
+  
+  .riders-stat__value {
+    font-size: 1.1rem;
+  }
+  
+  .riders-stat__label {
+    font-size: 0.6rem;
+    white-space: nowrap;
+  }
+  
+  /* Filters */
+  .riders-filters {
+    flex-direction: row;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    padding: 0;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .riders-filters::-webkit-scrollbar {
+    display: none;
+  }
+  
+  .riders-filters__label {
+    font-size: 0.7rem;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  
+  .riders-filters__buttons {
+    display: flex;
+    flex-direction: row;
+    gap: 0.35rem;
+    flex-shrink: 0;
+  }
+  
+  .filter-btn {
+    padding: 0.5rem 0.6rem;
+    font-size: 0.65rem;
+    text-align: center;
+    border-radius: 8px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  
+  .clear-filter-btn {
+    font-size: 0.7rem;
+    padding: 0.4rem 0.75rem;
+    flex-shrink: 0;
+  }
+  
+  /* Batch Sections */
+  .batch-section {
+    margin-bottom: 1.25rem;
+  }
+  
+  .batch-section__header {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding-bottom: 0.75rem;
+    margin-bottom: 0.75rem;
+  }
+  
+  .batch-section__icon {
+    font-size: 1.25rem;
+  }
+  
+  .batch-section__title {
+    font-size: 1rem;
+    flex: 1;
+  }
+  
+  .batch-section__count {
+    font-size: 0.7rem;
+    padding: 0.25rem 0.5rem;
+  }
+  
+  .add-batch-btn {
+    font-size: 0.7rem;
+    padding: 0.4rem 0.6rem;
+    width: 100%;
+    margin-top: 0.5rem;
+  }
+  
+  /* Batch Cards */
+  .batches-container {
+    gap: 0.6rem;
+  }
+  
+  .batch-card {
+    border-radius: 10px;
+  }
+  
+  .batch-card__header {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.875rem 1rem;
+  }
+  
+  .batch-card__info {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex: 1;
+    min-width: 0;
+  }
+  
+  .batch-card__name {
+    font-size: 0.9rem;
+    white-space: nowrap;
+  }
+  
+  .batch-card__time {
+    font-size: 0.7rem;
+    white-space: nowrap;
+  }
+  
+  .batch-card__meta {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex-shrink: 0;
+  }
+  
+  .batch-edit-btn,
+  .batch-delete-btn {
+    font-size: 0.9rem;
+    padding: 0.4rem 0.5rem;
+    min-width: 36px;
+    min-height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .batch-card__rider-count {
+    font-size: 0.65rem;
+    padding: 0.2rem 0.5rem;
+  }
+  
+  .batch-card__toggle {
+    font-size: 0.7rem;
+  }
+  
+  .batch-card__content {
+    padding: 0.75rem;
+  }
+  
+  /* When batch is expanded, allow more space */
+  .batch-card--expanded .batch-card__header {
+    flex-wrap: wrap;
+  }
+  
+  /* Tables - Horizontal Scroll with Sticky Columns */
+  .riders-table-wrapper,
+  .all-riders-table-wrapper,
+  .batch-card__content {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin: 0 -0.5rem;
+    padding: 0 0.5rem;
+  }
+  
+  .riders-table,
+  .all-riders-table {
+    min-width: 600px;
+    font-size: 0.75rem;
+  }
+  
+  .riders-table th,
+  .riders-table td,
+  .all-riders-table th,
+  .all-riders-table td {
+    padding: 0.6rem 0.4rem;
+    white-space: nowrap;
+  }
+  
+  /* Sticky first column (Name) */
+  .riders-table th:first-child,
+  .riders-table td:first-child,
+  .all-riders-table th:first-child,
+  .all-riders-table td:first-child {
+    position: sticky;
+    left: 0;
+    background: var(--bg-card);
+    z-index: 2;
+    box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1);
+  }
+  
+  /* Sticky last column (Actions) */
+  .riders-table th:last-child,
+  .riders-table td:last-child,
+  .all-riders-table th:last-child,
+  .all-riders-table td:last-child {
+    position: sticky;
+    right: 0;
+    background: var(--bg-card);
+    z-index: 2;
+    box-shadow: -2px 0 4px rgba(0, 0, 0, 0.1);
+  }
+  
+  .rider-name {
+    gap: 0.35rem;
+  }
+  
+  .rider-avatar {
+    font-size: 1rem;
+  }
+  
+  .rider-actions {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    gap: 0.25rem;
+  }
+  
+  .rider-actions button {
+    padding: 0.35rem 0.5rem;
+    font-size: 0.65rem;
+    border-radius: 4px;
+    white-space: nowrap;
+  }
+  
+  .level-badge {
+    font-size: 0.6rem;
+    padding: 0.2rem 0.4rem;
+  }
+  
+  .active-classes {
+    font-size: 0.7rem;
+  }
+  
+  /* All Riders Table */
+  .all-riders-section {
+    margin: 0 -0.5rem;
+    padding: 0 0.5rem;
+  }
+  
+  .all-riders-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+  }
+  
+  .all-riders-title {
+    font-size: 1rem;
+  }
+  
+  .all-riders-count {
+    font-size: 0.75rem;
+  }
+  
+  /* Horses Page */
+  .horses-stats {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+  }
+  
+  .horses-stat {
+    padding: 0.75rem;
+    border-radius: 10px;
+  }
+  
+  .horses-stat__value {
+    font-size: 1.5rem;
+  }
+  
+  .horses-stat__label {
+    font-size: 0.7rem;
+  }
+  
+  .horses-grid {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+  
+  .horse-card {
+    padding: 1rem;
+    border-radius: 12px;
+  }
+  
+  .horse-card__header {
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+  }
+  
+  .horse-card__avatar {
+    width: 50px;
+    height: 50px;
+    font-size: 1.5rem;
+  }
+  
+  .horse-card__name {
+    font-size: 1.1rem;
+  }
+  
+  .horse-card__details {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
+  }
+  
+  .horse-card__actions {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .horse-card__btn {
+    width: 100%;
+    padding: 0.75rem;
+  }
+  
+  .add-horse-btn,
+  .add-rider-btn {
+    padding: 0.875rem 1.25rem;
+    font-size: 0.85rem;
+    border-radius: 10px;
+    bottom: 90px;
+    right: 1rem;
+  }
+  
+  /* Modals - Full Screen */
+  .modal-overlay {
+    padding: 0;
+    align-items: flex-end;
+  }
+  
+  .modal {
+    width: 100%;
+    max-width: 100%;
+    max-height: 90vh;
+    border-radius: 20px 20px 0 0;
+    animation: slideUp 0.3s ease;
+  }
+  
+  @keyframes slideUp {
+    from {
+      transform: translateY(100%);
+    }
+    to {
+      transform: translateY(0);
+    }
+  }
+  
+  .modal__header {
+    position: sticky;
+    top: 0;
+    background: var(--modal-bg);
+    z-index: 2;
+    padding: 1rem;
+    border-radius: 20px 20px 0 0;
+  }
+  
+  .modal__title {
+    font-size: 1.1rem;
+  }
+  
+  .modal__close {
+    width: 32px;
+    height: 32px;
+    font-size: 1rem;
+  }
+  
+  .modal__body {
+    padding: 1rem;
+    overflow-y: auto;
+    max-height: calc(90vh - 140px);
+  }
+  
+  .modal__rider-info {
+    flex-direction: column;
+    text-align: center;
+    gap: 0.75rem;
+  }
+  
+  .modal__rider-avatar {
+    font-size: 2.5rem;
+  }
+  
+  .modal__rider-name {
+    font-size: 1.1rem;
+  }
+  
+  .modal__footer {
+    position: sticky;
+    bottom: 0;
+    background: var(--modal-bg);
+    padding: 1rem;
+    flex-direction: column;
+    gap: 0.5rem;
+    border-top: 1px solid var(--border-color);
+  }
+  
+  .modal__btn {
+    width: 100%;
+    padding: 0.875rem;
+    font-size: 0.9rem;
+  }
+  
+  /* Form Fields */
+  .form-row {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+  
+  .form-field label {
+    font-size: 0.8rem;
+  }
+  
+  .form-field input,
+  .form-field select {
+    padding: 0.75rem;
+    font-size: 16px; /* Prevent iOS zoom */
+    border-radius: 8px;
+  }
+  
+  /* Batch Select */
+  .batch-select-grid {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+  
+  .batch-select-group {
+    padding: 0.75rem;
+  }
+  
+  .batch-select-label {
+    font-size: 0.85rem;
+    margin-bottom: 0.5rem;
+  }
+  
+  .batch-radio {
+    margin-bottom: 0.35rem;
+  }
+  
+  .batch-radio__content {
+    padding: 0.6rem 0.75rem;
+  }
+  
+  .batch-radio__name {
+    font-size: 0.85rem;
+  }
+  
+  .batch-radio__time {
+    font-size: 0.7rem;
+  }
+  
+  .batch-radio__capacity {
+    font-size: 0.65rem;
+  }
+  
+  /* Batch Selection Modal */
+  .batch-selection__title {
+    font-size: 0.9rem;
+    margin-bottom: 0.75rem;
+  }
+  
+  .batch-selection__group-title {
+    font-size: 0.8rem;
+    margin-bottom: 0.5rem;
+  }
+  
+  .batch-selection__options {
+    gap: 0.4rem;
+  }
+  
+  .batch-option {
+    padding: 0.65rem 0.75rem;
+    gap: 0.5rem;
+  }
+  
+  .batch-option__name {
+    font-size: 0.85rem;
+    min-width: auto;
+  }
+  
+  .batch-option__time {
+    font-size: 0.75rem;
+  }
+  
+  .batch-option__count {
+    font-size: 0.7rem;
+    padding: 0.2rem 0.4rem;
+  }
+  
+  .batch-option__current-tag,
+  .batch-option__full-tag {
+    font-size: 0.6rem;
+    padding: 0.15rem 0.35rem;
+  }
+  
+  /* Move Confirmation */
+  .move-confirmation {
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 1rem;
+  }
+  
+  .move-confirmation__arrow {
+    transform: rotate(90deg);
+  }
+  
+  .move-confirmation__batch {
+    font-size: 0.9rem;
+  }
+  
+  /* Check-in Info */
+  .checkin-info {
+    gap: 0.75rem;
+  }
+  
+  .checkin-info__current,
+  .checkin-info__new {
+    padding: 0.75rem;
+  }
+  
+  .checkin-info__value {
+    font-size: 1.5rem;
+  }
+  
+  /* Payment Modal */
+  .modal__status,
+  .modal__deduction {
+    padding: 0.75rem;
+    font-size: 0.85rem;
+  }
+  
+  /* Edit Batch Modal */
+  .edit-batch-info {
+    margin-bottom: 1rem;
+  }
+  
+  .edit-batch-type {
+    font-size: 0.9rem;
+  }
+  
+  /* Delete Batch Modal */
+  .delete-batch-info {
+    padding: 1rem;
+    margin-bottom: 1rem;
+  }
+  
+  .delete-batch-name {
+    font-size: 1.1rem;
+  }
+  
+  /* Schedule */
+  .admin__schedule {
+    gap: 0.75rem;
+  }
+  
+  .schedule-item {
+    gap: 0.75rem;
+    padding: 0.5rem 0;
+  }
+  
+  .schedule-item__time {
+    font-size: 0.75rem;
+    min-width: 60px;
+  }
+  
+  .schedule-item__title {
+    font-size: 0.85rem;
+  }
+  
+  .schedule-item__meta {
+    font-size: 0.7rem;
+  }
+  
+  /* Placeholder */
+  .placeholder-page {
+    padding: 2rem 1rem;
+  }
+  
+  .placeholder-icon {
+    font-size: 3rem;
+  }
+  
+  .placeholder-title {
+    font-size: 1.25rem;
+  }
+  
+  /* Horse Item */
+  .horse-item {
+    padding: 0.6rem 0;
+  }
+  
+  .horse-item__avatar {
+    font-size: 1.25rem;
+  }
+  
+  .horse-item__name {
+    font-size: 0.9rem;
+  }
+  
+  .horse-item__details {
+    font-size: 0.7rem;
+  }
+  
+  /* Loading */
+  .loading-overlay {
+    padding: 1.5rem;
+    border-radius: 12px;
+  }
+  
+  .loading-spinner {
+    font-size: 0.85rem;
+  }
+  
+  .no-riders-message {
+    padding: 1.5rem;
+    font-size: 0.85rem;
+  }
+}
+
+/* Small Mobile (< 400px) */
+@media (max-width: 400px) {
+  .admin__main {
+    padding: 0.75rem;
+    padding-bottom: 80px;
+  }
+  
+  .admin__nav-item {
+    min-width: 50px;
+    padding: 0.5rem 0.35rem;
+  }
+  
+  .admin__nav-item span:not(.admin__nav-icon) {
+    display: none;
+  }
+  
+  .admin__nav-icon {
+    font-size: 1.1rem;
+  }
+  
+  .admin__title {
+    font-size: 1.2rem;
+  }
+  
+  .admin__stats {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+  
+  .stat-card {
+    flex-direction: row;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem;
+  }
+  
+  .stat-card__icon {
+    margin-bottom: 0;
+  }
+  
+  .stat-card__content {
+    text-align: left;
+  }
+  
+  /* Keep riders stats in one row even on small screens */
+  .riders-stats {
+    flex-direction: row;
+    gap: 0.35rem;
+  }
+  
+  .riders-stat {
+    padding: 0.5rem 0.35rem;
+  }
+  
+  .riders-stat__value {
+    font-size: 1rem;
+  }
+  
+  .riders-stat__label {
+    font-size: 0.55rem;
+  }
+  
+  .riders-filters__buttons {
+    display: flex;
+    flex-direction: row;
+  }
+  
+  .filter-btn {
+    padding: 0.5rem 0.5rem;
+    font-size: 0.6rem;
+  }
+  
+  .horses-stats {
+    grid-template-columns: 1fr;
+    gap: 0.4rem;
+  }
+  
+  .horses-stat {
+    flex-direction: row;
+    justify-content: space-between;
+    padding: 0.6rem 0.75rem;
+    text-align: left;
+  }
+  
+  /* Batch card even more compact */
+  .batch-card__header {
+    padding: 0.75rem 1rem;
+  }
+  
+  .batch-card__name {
+    font-size: 0.85rem;
+  }
+  
+  .batch-card__time {
+    font-size: 0.65rem;
+  }
+  
+  .batch-card__rider-count {
+    font-size: 0.6rem;
+    padding: 0.15rem 0.4rem;
+  }
+  
+  .modal {
+    max-height: 100vh;
+    border-radius: 0;
+  }
+  
+  .modal__body {
+    max-height: calc(100vh - 140px);
+  }
+}
+
+/* Touch-friendly targets */
+@media (pointer: coarse) {
+  .admin__nav-item,
+  .filter-btn,
+  .batch-card__header,
+  .rider-actions button,
+  .modal__btn,
+  .quick-action,
+  .batch-option,
+  .batch-radio,
+  .batch-edit-btn,
+  .batch-delete-btn {
+    min-height: 44px;
+  }
+  
+  .form-field input,
+  .form-field select {
+    min-height: 48px;
+  }
+}
+
+/* Landscape Mobile */
+@media (max-width: 900px) and (orientation: landscape) {
+  .admin__sidebar {
+    height: 55px;
+  }
+  
+  .admin__nav {
+    padding: 0.25rem;
+  }
+  
+  .admin__nav-item {
+    padding: 0.4rem 0.5rem;
+    min-width: auto;
+  }
+  
+  .admin__nav-icon {
+    font-size: 1rem;
+  }
+  
+  .admin__nav-item span:not(.admin__nav-icon) {
+    display: none;
+  }
+  
+  .admin__main {
+    padding-bottom: 65px;
+  }
+  
+  .modal {
+    max-height: 95vh;
+  }
+  
+  .modal__body {
+    max-height: calc(95vh - 120px);
+  }
+}
+
+/* Print Styles */
+@media print {
+  .admin__sidebar,
+  .admin__header-right,
+  .rider-actions,
+  .add-rider-btn,
+  .add-horse-btn,
+  .batch-edit-btn,
+  .batch-delete-btn {
+    display: none !important;
+  }
+  
+  .admin__main {
+    margin-left: 0;
+  }
+  
+  .modal-overlay {
+    position: static;
+    background: none;
+  }
+  
+  .modal {
+    box-shadow: none;
+    border: 1px solid #ccc;
+  }
 }
 
