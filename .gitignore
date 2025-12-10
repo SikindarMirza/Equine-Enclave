@@ -8,7 +8,7 @@ server/.env
 # Build output
 dist/
 build/
-server/public/
+# server/public/ - Keep this for Heroku deployment
 
 # Vite
 *.local
