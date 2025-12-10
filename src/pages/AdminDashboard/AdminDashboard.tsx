@@ -72,7 +72,7 @@ interface Batch {
 function AdminDashboard() {
   const navigate = useNavigate()
   const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [adminUser, setAdminUser] = useState<AdminUser | null>(null)
+  const [, setAdminUser] = useState<AdminUser | null>(null)
   const [authChecking, setAuthChecking] = useState(true)
   const [activeTab, setActiveTab] = useState('overview')
   const [expandedBatches, setExpandedBatches] = useState<string[]>(['morning-batch1', 'evening-batch1'])
