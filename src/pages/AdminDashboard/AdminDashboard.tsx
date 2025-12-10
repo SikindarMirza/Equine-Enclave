@@ -1439,11 +1439,21 @@ function AdminDashboard() {
       </>
       )}
 
-      {/* Add Rider Button */}
-      <button className="add-rider-btn" onClick={() => setAddRiderModal(true)}>
-        <span>➕</span>
-        Add New Rider
-      </button>
+      {/* Add Rider Button - Hide when any modal is open */}
+      {!paymentModal.isOpen && 
+       !checkinModal.isOpen && 
+       !deleteModal.isOpen && 
+       !editRiderModal.isOpen && 
+       !editBatchModal.isOpen && 
+       !deleteBatchModal.isOpen && 
+       !addBatchModal.isOpen && 
+       !addRiderModal && 
+       !assignBatchModal.isOpen && (
+        <button className="add-rider-btn" onClick={() => setAddRiderModal(true)}>
+          <span>➕</span>
+          Add New Rider
+        </button>
+      )}
 
       {/* Check-in Confirmation Modal */}
       {checkinModal.isOpen && checkinModal.rider && (
