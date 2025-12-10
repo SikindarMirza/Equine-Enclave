@@ -4,6 +4,7 @@ const cors = require('cors');
 const connectDB = require('./config/database');
 const ridersRouter = require('./routes/riders');
 const batchesRouter = require('./routes/batches');
+const authRouter = require('./routes/auth');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -22,6 +23,7 @@ app.use((req, res, next) => {
 });
 
 // Routes
+app.use('/api/auth', authRouter);
 app.use('/api/riders', ridersRouter);
 app.use('/api/batches', batchesRouter);
 

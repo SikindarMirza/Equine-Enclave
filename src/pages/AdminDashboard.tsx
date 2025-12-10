@@ -1,8 +1,16 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import './AdminDashboard.css'
 
 const API_BASE_URL = 'http://localhost:3001/api'
+
+interface AdminUser {
+  id: string
+  username: string
+  name: string
+  email: string
+  role: string
+}
 
 interface StatCard {
   title: string
@@ -62,6 +70,10 @@ interface Batch {
 }
 
 function AdminDashboard() {
+  const navigate = useNavigate()
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [adminUser, setAdminUser] = useState<AdminUser | null>(null)
+  const [authChecking, setAuthChecking] = useState(true)
   const [activeTab, setActiveTab] = useState('overview')
   const [expandedBatches, setExpandedBatches] = useState<string[]>(['morning-batch1', 'evening-batch1'])
   const [paymentModal, setPaymentModal] = useState<{ isOpen: boolean; rider: Rider | null; batchType: 'morning' | 'evening'; batchIndex: number }>({ isOpen: false, rider: null, batchType: 'morning', batchIndex: 0 })
@@ -90,8 +102,12 @@ function AdminDashboard() {
     isOpen: boolean; 
     rider: Rider | null; 
     sourceBatchType: 'morning' | 'evening'; 
-    sourceBatchIndex: number 
-  }>({ isOpen: false, rider: null, sourceBatchType: 'morning', sourceBatchIndex: 0 })
+    sourceBatchIndex: number;
+    targetBatchType: 'morning' | 'evening' | null;
+    targetBatchIndex: number | null;
+    isConfirming: boolean;
+    isMoving: boolean;
+  }>({ isOpen: false, rider: null, sourceBatchType: 'morning', sourceBatchIndex: 0, targetBatchType: null, targetBatchIndex: null, isConfirming: false, isMoving: false })
   
   const [addRiderModal, setAddRiderModal] = useState(false)
   const [checkinModal, setCheckinModal] = useState<{
@@ -134,6 +150,148 @@ function AdminDashboard() {
   
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchResults, setSearchResults] = useState<Array<Rider & { batchName: string; batchLabel: string }>>([])
+  const [showSearchResults, setShowSearchResults] = useState(false)
+  const [selectedRiderId, setSelectedRiderId] = useState<string | null>(null)
+  const [tableSearchFilter, setTableSearchFilter] = useState('')
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
+    const savedTheme = localStorage.getItem('admin-theme')
+    return (savedTheme as 'dark' | 'light') || 'dark'
+  })
+
+  // Theme toggle handler
+  const toggleTheme = () => {
+    const newTheme = theme === 'dark' ? 'light' : 'dark'
+    setTheme(newTheme)
+    localStorage.setItem('admin-theme', newTheme)
+  }
+
+  // Check authentication on mount
+  useEffect(() => {
+    const checkAuth = async () => {
+      const token = localStorage.getItem('admin-token')
+      const storedUser = localStorage.getItem('admin-user')
+
+      if (!token || !storedUser) {
+        setAuthChecking(false)
+        navigate('/admin-login')
+        return
+      }
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/auth/verify`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        })
+
+        const result = await response.json()
+
+        if (result.success) {
+          setIsAuthenticated(true)
+          setAdminUser(result.data.user)
+        } else {
+          // Token invalid, clear and redirect
+          localStorage.removeItem('admin-token')
+          localStorage.removeItem('admin-user')
+          navigate('/admin-login')
+        }
+      } catch (err) {
+        console.error('Auth check failed:', err)
+        // On error, try to use stored user data
+        try {
+          const user = JSON.parse(storedUser)
+          setIsAuthenticated(true)
+          setAdminUser(user)
+        } catch {
+          navigate('/admin-login')
+        }
+      } finally {
+        setAuthChecking(false)
+      }
+    }
+
+    checkAuth()
+  }, [navigate])
+
+  // Logout handler
+  const handleLogout = () => {
+    localStorage.removeItem('admin-token')
+    localStorage.removeItem('admin-user')
+    setIsAuthenticated(false)
+    setAdminUser(null)
+    navigate('/admin-login')
+  }
+
+  // Search handler
+  const handleSearch = (query: string) => {
+    setSearchQuery(query)
+    
+    if (!query.trim()) {
+      setSearchResults([])
+      setShowSearchResults(false)
+      return
+    }
+
+    const searchLower = query.toLowerCase()
+    const results: Array<Rider & { batchName: string; batchLabel: string }> = []
+
+    // Search in morning batches
+    morningBatches.filter(b => b != null).forEach((batch) => {
+      batch.riders.forEach(rider => {
+        if (
+          rider.name.toLowerCase().includes(searchLower) ||
+          rider.phone.includes(query) ||
+          rider.email.toLowerCase().includes(searchLower)
+        ) {
+          results.push({
+            ...rider,
+            batchName: batch.name,
+            batchLabel: 'Morning'
+          })
+        }
+      })
+    })
+
+    // Search in evening batches
+    eveningBatches.filter(b => b != null).forEach((batch) => {
+      batch.riders.forEach(rider => {
+        if (
+          rider.name.toLowerCase().includes(searchLower) ||
+          rider.phone.includes(query) ||
+          rider.email.toLowerCase().includes(searchLower)
+        ) {
+          results.push({
+            ...rider,
+            batchName: batch.name,
+            batchLabel: 'Evening'
+          })
+        }
+      })
+    })
+
+    setSearchResults(results)
+    setShowSearchResults(true)
+  }
+
+  // Close search results when clicking outside
+  const closeSearchResults = () => {
+    setShowSearchResults(false)
+  }
+
+  // Handle Enter key to show all search results in table
+  const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && searchQuery.trim()) {
+      setActiveTab('riders')
+      setRiderFilter('all-details')
+      setSelectedRiderId(null)
+      setTableSearchFilter(searchQuery.trim())
+      setShowSearchResults(false)
+    } else if (e.key === 'Escape') {
+      setShowSearchResults(false)
+    }
+  }
 
   // Function to open edit batch modal
   const openEditBatchModal = (batchType: 'morning' | 'evening', batchIndex: number, name: string, time: string) => {
@@ -445,18 +603,32 @@ function AdminDashboard() {
     setPaymentModal({ isOpen: false, rider: null, batchType: 'morning', batchIndex: 0 })
   }
 
-  // Function to move rider to a different batch
-  const handleMoveToBatch = async (targetBatchType: 'morning' | 'evening', targetBatchIndex: number) => {
-    if (!assignBatchModal.rider) return
-    
-    const rider = assignBatchModal.rider
+  // Function to select target batch (shows confirmation)
+  const selectTargetBatch = (targetBatchType: 'morning' | 'evening', targetBatchIndex: number) => {
     const { sourceBatchType, sourceBatchIndex } = assignBatchModal
     
-    // Don't do anything if moving to the same batch
+    // Don't do anything if selecting the same batch
     if (sourceBatchType === targetBatchType && sourceBatchIndex === targetBatchIndex) {
-      setAssignBatchModal({ isOpen: false, rider: null, sourceBatchType: 'morning', sourceBatchIndex: 0 })
       return
     }
+    
+    setAssignBatchModal(prev => ({
+      ...prev,
+      targetBatchType,
+      targetBatchIndex,
+      isConfirming: true
+    }))
+  }
+
+  // Function to confirm and move rider to the selected batch
+  const confirmMoveToBatch = async () => {
+    if (!assignBatchModal.rider || assignBatchModal.targetBatchType === null || assignBatchModal.targetBatchIndex === null) return
+    
+    const rider = assignBatchModal.rider
+    const { targetBatchType, targetBatchIndex } = assignBatchModal
+    
+    // Set loading state
+    setAssignBatchModal(prev => ({ ...prev, isMoving: true }))
     
     try {
       const response = await fetch(`${API_BASE_URL}/riders/${rider.id}/move`, {
@@ -479,7 +651,17 @@ function AdminDashboard() {
       alert('Failed to move rider')
     }
     
-    setAssignBatchModal({ isOpen: false, rider: null, sourceBatchType: 'morning', sourceBatchIndex: 0 })
+    setAssignBatchModal({ isOpen: false, rider: null, sourceBatchType: 'morning', sourceBatchIndex: 0, targetBatchType: null, targetBatchIndex: null, isConfirming: false, isMoving: false })
+  }
+
+  // Function to cancel batch move confirmation
+  const cancelMoveConfirmation = () => {
+    setAssignBatchModal(prev => ({
+      ...prev,
+      targetBatchType: null,
+      targetBatchIndex: null,
+      isConfirming: false
+    }))
   }
 
   // Function to add a new rider
@@ -853,19 +1035,19 @@ function AdminDashboard() {
         <div className="riders-filters__buttons">
           <button 
             className={`filter-btn ${riderFilter === 'all' ? 'filter-btn--active' : ''}`}
-            onClick={() => setRiderFilter('all')}
+            onClick={() => { setRiderFilter('all'); setSelectedRiderId(null); setTableSearchFilter(''); }}
           >
             All Riders
           </button>
           <button 
             className={`filter-btn ${riderFilter === 'payment-due' ? 'filter-btn--active' : ''}`}
-            onClick={() => setRiderFilter('payment-due')}
+            onClick={() => { setRiderFilter('payment-due'); setSelectedRiderId(null); setTableSearchFilter(''); }}
           >
             Payment Due ({getPaymentDueCount()})
           </button>
           <button 
             className={`filter-btn ${riderFilter === 'all-details' ? 'filter-btn--active' : ''}`}
-            onClick={() => setRiderFilter('all-details')}
+            onClick={() => { setRiderFilter('all-details'); setSelectedRiderId(null); setTableSearchFilter(''); }}
           >
             Show All Rider Details
           </button>
@@ -876,8 +1058,19 @@ function AdminDashboard() {
       {riderFilter === 'all-details' && (
         <div className="all-riders-section">
           <div className="all-riders-header">
-            <h3 className="all-riders-title">📋 All Rider Details</h3>
-            <span className="all-riders-count">{getAllRidersWithBatchInfo().length} riders</span>
+            <h3 className="all-riders-title">
+              📋 {selectedRiderId ? 'Rider Details' : tableSearchFilter ? `Search Results for "${tableSearchFilter}"` : 'All Rider Details'}
+            </h3>
+            {(selectedRiderId || tableSearchFilter) ? (
+              <button 
+                className="clear-filter-btn"
+                onClick={() => { setSelectedRiderId(null); setTableSearchFilter(''); }}
+              >
+                ✕ Clear Filter - Show All Riders
+              </button>
+            ) : (
+              <span className="all-riders-count">{getAllRidersWithBatchInfo().length} riders</span>
+            )}
           </div>
           <div className="all-riders-table-wrapper">
             <table className="all-riders-table">
@@ -893,8 +1086,21 @@ function AdminDashboard() {
                 </tr>
               </thead>
               <tbody>
-                {getAllRidersWithBatchInfo().map(({ rider, batchType, batchIndex, batchName }) => (
-                  <tr key={rider.id}>
+                {getAllRidersWithBatchInfo()
+                  .filter(({ rider }) => {
+                    if (selectedRiderId) return rider.id === selectedRiderId
+                    if (tableSearchFilter) {
+                      const searchLower = tableSearchFilter.toLowerCase()
+                      return (
+                        rider.name.toLowerCase().includes(searchLower) ||
+                        rider.phone.includes(tableSearchFilter) ||
+                        rider.email.toLowerCase().includes(searchLower)
+                      )
+                    }
+                    return true
+                  })
+                  .map(({ rider, batchType, batchIndex, batchName }) => (
+                  <tr key={rider.id} className={selectedRiderId === rider.id ? 'highlighted-row' : ''}>
                     <td>
                       <div className="rider-name">
                         <span className="rider-avatar">🏇</span>
@@ -1051,7 +1257,7 @@ function AdminDashboard() {
                                   </button>
                                   <button 
                                     className="assign-btn"
-                                    onClick={() => setAssignBatchModal({ isOpen: true, rider, sourceBatchType: 'morning', sourceBatchIndex: index })}
+                                    onClick={() => setAssignBatchModal({ isOpen: true, rider, sourceBatchType: 'morning', sourceBatchIndex: index, targetBatchType: null, targetBatchIndex: null, isConfirming: false, isMoving: false })}
                                     title="Assign to Batch"
                                   >
                                     Move
@@ -1186,7 +1392,7 @@ function AdminDashboard() {
                                   </button>
                                   <button 
                                     className="assign-btn"
-                                    onClick={() => setAssignBatchModal({ isOpen: true, rider, sourceBatchType: 'evening', sourceBatchIndex: index })}
+                                    onClick={() => setAssignBatchModal({ isOpen: true, rider, sourceBatchType: 'evening', sourceBatchIndex: index, targetBatchType: null, targetBatchIndex: null, isConfirming: false, isMoving: false })}
                                     title="Assign to Batch"
                                   >
                                     Move
@@ -1752,87 +1958,153 @@ function AdminDashboard() {
 
       {/* Assign Batch Modal */}
       {assignBatchModal.isOpen && assignBatchModal.rider && (
-        <div className="modal-overlay" onClick={() => setAssignBatchModal({ isOpen: false, rider: null, sourceBatchType: 'morning', sourceBatchIndex: 0 })}>
+        <div className="modal-overlay" onClick={() => !assignBatchModal.isMoving && setAssignBatchModal({ isOpen: false, rider: null, sourceBatchType: 'morning', sourceBatchIndex: 0, targetBatchType: null, targetBatchIndex: null, isConfirming: false, isMoving: false })}>
           <div className="modal modal--assign" onClick={(e) => e.stopPropagation()}>
             <div className="modal__header">
-              <h2 className="modal__title">🔄 Move to Batch</h2>
+              <h2 className="modal__title">{assignBatchModal.isConfirming ? '✅ Confirm Move' : '🔄 Move to Batch'}</h2>
               <button 
                 className="modal__close"
-                onClick={() => setAssignBatchModal({ isOpen: false, rider: null, sourceBatchType: 'morning', sourceBatchIndex: 0 })}
+                onClick={() => !assignBatchModal.isMoving && setAssignBatchModal({ isOpen: false, rider: null, sourceBatchType: 'morning', sourceBatchIndex: 0, targetBatchType: null, targetBatchIndex: null, isConfirming: false, isMoving: false })}
+                disabled={assignBatchModal.isMoving}
               >
                 ✕
               </button>
             </div>
             <div className="modal__body">
-              <div className="modal__rider-info">
-                <div className="modal__rider-avatar">🏇</div>
-                <div className="modal__rider-details">
-                  <h3 className="modal__rider-name">{assignBatchModal.rider.name}</h3>
-                  <p className="modal__rider-meta">
-                    Currently in: {assignBatchModal.sourceBatchType === 'morning' ? '🌅 Morning' : '🌆 Evening'} - {
-                      assignBatchModal.sourceBatchType === 'morning' 
-                        ? morningBatches[assignBatchModal.sourceBatchIndex]?.name 
-                        : eveningBatches[assignBatchModal.sourceBatchIndex]?.name
-                    }
+              {assignBatchModal.isMoving ? (
+                <div className="move-loading">
+                  <div className="move-loading__spinner"></div>
+                  <p className="move-loading__text">Moving {assignBatchModal.rider.name}...</p>
+                </div>
+              ) : assignBatchModal.isConfirming && assignBatchModal.targetBatchType !== null && assignBatchModal.targetBatchIndex !== null ? (
+                <>
+                  <div className="modal__rider-info">
+                    <div className="modal__rider-avatar">🏇</div>
+                    <div className="modal__rider-details">
+                      <h3 className="modal__rider-name">{assignBatchModal.rider.name}</h3>
+                    </div>
+                  </div>
+                  
+                  <div className="move-confirmation">
+                    <div className="move-confirmation__from">
+                      <span className="move-confirmation__label">From</span>
+                      <span className="move-confirmation__batch">
+                        {assignBatchModal.sourceBatchType === 'morning' ? '🌅' : '🌆'} {
+                          assignBatchModal.sourceBatchType === 'morning' 
+                            ? morningBatches[assignBatchModal.sourceBatchIndex]?.name 
+                            : eveningBatches[assignBatchModal.sourceBatchIndex]?.name
+                        }
+                      </span>
+                    </div>
+                    <div className="move-confirmation__arrow">→</div>
+                    <div className="move-confirmation__to">
+                      <span className="move-confirmation__label">To</span>
+                      <span className="move-confirmation__batch">
+                        {assignBatchModal.targetBatchType === 'morning' ? '🌅' : '🌆'} {
+                          assignBatchModal.targetBatchType === 'morning' 
+                            ? morningBatches[assignBatchModal.targetBatchIndex]?.name 
+                            : eveningBatches[assignBatchModal.targetBatchIndex]?.name
+                        }
+                      </span>
+                    </div>
+                  </div>
+
+                  <p className="modal__message">
+                    Are you sure you want to move <strong>{assignBatchModal.rider.name}</strong> to this batch?
                   </p>
-                </div>
-              </div>
-              
-              <div className="batch-selection">
-                <h4 className="batch-selection__title">Select Target Batch</h4>
-                
-                <div className="batch-selection__group">
-                  <h5 className="batch-selection__group-title">🌅 Morning Batches</h5>
-                  <div className="batch-selection__options">
-                    {morningBatches.filter(b => b != null).map((batch, idx) => {
-                      const isCurrent = assignBatchModal.sourceBatchType === 'morning' && assignBatchModal.sourceBatchIndex === idx
-                      return (
-                        <button
-                          key={`morning-${idx}`}
-                          className={`batch-option ${isCurrent ? 'batch-option--current' : ''}`}
-                          onClick={() => handleMoveToBatch('morning', idx)}
-                          disabled={isCurrent}
-                        >
-                          <span className="batch-option__name">{batch.name}</span>
-                          <span className="batch-option__time">{batch.time}</span>
-                          <span className="batch-option__count">{batch.riders.length} riders</span>
-                          {isCurrent && <span className="batch-option__current-tag">Current</span>}
-                        </button>
-                      )
-                    })}
+                </>
+              ) : (
+                <>
+                  <div className="modal__rider-info">
+                    <div className="modal__rider-avatar">🏇</div>
+                    <div className="modal__rider-details">
+                      <h3 className="modal__rider-name">{assignBatchModal.rider.name}</h3>
+                      <p className="modal__rider-meta">
+                        Currently in: {assignBatchModal.sourceBatchType === 'morning' ? '🌅 Morning' : '🌆 Evening'} - {
+                          assignBatchModal.sourceBatchType === 'morning' 
+                            ? morningBatches[assignBatchModal.sourceBatchIndex]?.name 
+                            : eveningBatches[assignBatchModal.sourceBatchIndex]?.name
+                        }
+                      </p>
+                    </div>
                   </div>
-                </div>
-                
-                <div className="batch-selection__group">
-                  <h5 className="batch-selection__group-title">🌆 Evening Batches</h5>
-                  <div className="batch-selection__options">
-                    {eveningBatches.filter(b => b != null).map((batch, idx) => {
-                      const isCurrent = assignBatchModal.sourceBatchType === 'evening' && assignBatchModal.sourceBatchIndex === idx
-                      return (
-                        <button
-                          key={`evening-${idx}`}
-                          className={`batch-option ${isCurrent ? 'batch-option--current' : ''}`}
-                          onClick={() => handleMoveToBatch('evening', idx)}
-                          disabled={isCurrent}
-                        >
-                          <span className="batch-option__name">{batch.name}</span>
-                          <span className="batch-option__time">{batch.time}</span>
-                          <span className="batch-option__count">{batch.riders.length} riders</span>
-                          {isCurrent && <span className="batch-option__current-tag">Current</span>}
-                        </button>
-                      )
-                    })}
+                  
+                  <div className="batch-selection">
+                    <h4 className="batch-selection__title">Select Target Batch</h4>
+                    
+                    <div className="batch-selection__group">
+                      <h5 className="batch-selection__group-title">🌅 Morning Batches</h5>
+                      <div className="batch-selection__options">
+                        {morningBatches.filter(b => b != null).map((batch, idx) => {
+                          const isCurrent = assignBatchModal.sourceBatchType === 'morning' && assignBatchModal.sourceBatchIndex === idx
+                          return (
+                            <button
+                              key={`morning-${idx}`}
+                              className={`batch-option ${isCurrent ? 'batch-option--current' : ''}`}
+                              onClick={() => selectTargetBatch('morning', idx)}
+                              disabled={isCurrent}
+                            >
+                              <span className="batch-option__name">{batch.name}</span>
+                              <span className="batch-option__time">{batch.time}</span>
+                              <span className="batch-option__count">{batch.riders.length} riders</span>
+                              {isCurrent && <span className="batch-option__current-tag">Current</span>}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                    
+                    <div className="batch-selection__group">
+                      <h5 className="batch-selection__group-title">🌆 Evening Batches</h5>
+                      <div className="batch-selection__options">
+                        {eveningBatches.filter(b => b != null).map((batch, idx) => {
+                          const isCurrent = assignBatchModal.sourceBatchType === 'evening' && assignBatchModal.sourceBatchIndex === idx
+                          return (
+                            <button
+                              key={`evening-${idx}`}
+                              className={`batch-option ${isCurrent ? 'batch-option--current' : ''}`}
+                              onClick={() => selectTargetBatch('evening', idx)}
+                              disabled={isCurrent}
+                            >
+                              <span className="batch-option__name">{batch.name}</span>
+                              <span className="batch-option__time">{batch.time}</span>
+                              <span className="batch-option__count">{batch.riders.length} riders</span>
+                              {isCurrent && <span className="batch-option__current-tag">Current</span>}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
+                </>
+              )}
             </div>
             <div className="modal__footer">
-              <button 
-                className="modal__btn modal__btn--cancel"
-                onClick={() => setAssignBatchModal({ isOpen: false, rider: null, sourceBatchType: 'morning', sourceBatchIndex: 0 })}
-              >
-                Cancel
-              </button>
+              {assignBatchModal.isMoving ? (
+                <span className="modal__loading-text">Please wait...</span>
+              ) : assignBatchModal.isConfirming ? (
+                <>
+                  <button 
+                    className="modal__btn modal__btn--cancel"
+                    onClick={cancelMoveConfirmation}
+                  >
+                    Back
+                  </button>
+                  <button 
+                    className="modal__btn modal__btn--confirm"
+                    onClick={confirmMoveToBatch}
+                  >
+                    Confirm Move
+                  </button>
+                </>
+              ) : (
+                <button 
+                  className="modal__btn modal__btn--cancel"
+                  onClick={() => setAssignBatchModal({ isOpen: false, rider: null, sourceBatchType: 'morning', sourceBatchIndex: 0, targetBatchType: null, targetBatchIndex: null, isConfirming: false, isMoving: false })}
+                >
+                  Cancel
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -1924,8 +2196,23 @@ function AdminDashboard() {
     }
   }
 
+  // Show loading while checking auth
+  if (authChecking) {
+    return (
+      <div className="admin-auth-loading">
+        <div className="admin-auth-loading__spinner"></div>
+        <p>Loading...</p>
+      </div>
+    )
+  }
+
+  // If not authenticated, don't render (will redirect)
+  if (!isAuthenticated) {
+    return null
+  }
+
   return (
-    <div className="admin">
+    <div className={`admin ${theme === 'light' ? 'theme-light' : ''}`}>
       {/* Sidebar */}
       <aside className="admin__sidebar">
         <div className="admin__logo">
@@ -1986,6 +2273,11 @@ function AdminDashboard() {
         </nav>
 
         <div className="admin__sidebar-footer">
+          <div className="theme-toggle" onClick={toggleTheme}>
+            <span className="theme-toggle__icon">{theme === 'dark' ? '🌙' : '☀️'}</span>
+            <span className="theme-toggle__label">{theme === 'dark' ? 'Dark Mode' : 'Light Mode'}</span>
+            <div className="theme-toggle__switch"></div>
+          </div>
           <Link to="/" className="admin__back-link">
             ← Back to Website
           </Link>
@@ -2001,16 +2293,75 @@ function AdminDashboard() {
             <p className="admin__subtitle">{getPageSubtitle()}</p>
           </div>
           <div className="admin__header-right">
-            <div className="admin__search">
-              <input type="text" placeholder="Search..." />
-            </div>
-            <button className="admin__notification">
-              🔔
-              <span className="admin__notification-badge">3</span>
-            </button>
-            <div className="admin__user">
-              <div className="admin__avatar">JD</div>
-              <span className="admin__user-name">Jane Doe</span>
+            {activeTab === 'riders' && (
+              <div className="admin__search">
+                <input 
+                  type="text" 
+                  placeholder="Search riders... (Enter to filter)" 
+                  value={searchQuery}
+                  onChange={(e) => handleSearch(e.target.value)}
+                  onFocus={() => searchQuery && setShowSearchResults(true)}
+                  onKeyDown={handleSearchKeyDown}
+                />
+                {showSearchResults && (
+                  <div className="search-results">
+                    <div className="search-results__header">
+                      <span>Search Results ({searchResults.length})</span>
+                      <button className="search-results__close" onClick={closeSearchResults}>✕</button>
+                    </div>
+                    {searchResults.length > 0 ? (
+                      <div className="search-results__list">
+                        {searchResults.slice(0, 8).map((rider) => (
+                          <div 
+                            key={rider.id} 
+                            className="search-result-item"
+                            onClick={() => {
+                              setActiveTab('riders')
+                              setRiderFilter('all-details')
+                              setSelectedRiderId(rider.id)
+                              setShowSearchResults(false)
+                              setSearchQuery('')
+                            }}
+                          >
+                            <div className="search-result-item__avatar">
+                              {rider.name.split(' ').map(n => n[0]).join('').toUpperCase()}
+                            </div>
+                            <div className="search-result-item__info">
+                              <span className="search-result-item__name">{rider.name}</span>
+                              <span className="search-result-item__meta">
+                                {rider.batchLabel} - {rider.batchName} • {rider.phone}
+                              </span>
+                            </div>
+                            <span className={`search-result-item__level level-badge level-badge--${rider.level}`}>
+                              {rider.level}
+                            </span>
+                          </div>
+                        ))}
+                        {searchResults.length > 8 && (
+                          <div className="search-results__more">
+                            +{searchResults.length - 8} more results
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="search-results__empty">
+                        No riders found matching "{searchQuery}"
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+            <div className="admin__user-menu">
+              <div className="admin__user">
+                <div className="admin__avatar">
+                  {adminUser?.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'A'}
+                </div>
+                <span className="admin__user-name">{adminUser?.name || 'Admin'}</span>
+              </div>
+              <button className="admin__logout-btn" onClick={handleLogout} title="Logout">
+                🚪
+              </button>
             </div>
           </div>
         </header>
