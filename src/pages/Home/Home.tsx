@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import '../App.css'
+import './Home.css'
 
 function Home() {
   const [scrolled, setScrolled] = useState(false)

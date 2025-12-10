@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import './AdminDashboard.css'
 
 const API_BASE_URL = 'http://localhost:3001/api'
@@ -175,7 +175,7 @@ function AdminDashboard() {
 
       if (!token || !storedUser) {
         setAuthChecking(false)
-        navigate('/admin-login')
+        navigate('/login')
         return
       }
 
@@ -195,7 +195,7 @@ function AdminDashboard() {
           // Token invalid, clear and redirect
           localStorage.removeItem('admin-token')
           localStorage.removeItem('admin-user')
-          navigate('/admin-login')
+          navigate('/login')
         }
       } catch (err) {
         console.error('Auth check failed:', err)
@@ -205,7 +205,7 @@ function AdminDashboard() {
           setIsAuthenticated(true)
           setAdminUser(user)
         } catch {
-          navigate('/admin-login')
+          navigate('/login')
         }
       } finally {
         setAuthChecking(false)
@@ -221,7 +221,7 @@ function AdminDashboard() {
     localStorage.removeItem('admin-user')
     setIsAuthenticated(false)
     setAdminUser(null)
-    navigate('/admin-login')
+    navigate('/login')
   }
 
   // Search handler
@@ -2278,9 +2278,6 @@ function AdminDashboard() {
             <span className="theme-toggle__label">{theme === 'dark' ? 'Dark Mode' : 'Light Mode'}</span>
             <div className="theme-toggle__switch"></div>
           </div>
-          <Link to="/" className="admin__back-link">
-            ← Back to Website
-          </Link>
         </div>
       </aside>
 

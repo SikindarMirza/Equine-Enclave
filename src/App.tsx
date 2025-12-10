@@ -1,15 +1,16 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
-import Home from './pages/Home'
-import AdminLogin from './pages/AdminLogin'
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
+import Login from './pages/Login'
 import AdminDashboard from './pages/AdminDashboard'
 
 function App() {
   return (
     <Router>
       <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/admin-login" element={<AdminLogin />} />
-        <Route path="/admin-dashboard" element={<AdminDashboard />} />
+        <Route path="/" element={<AdminDashboard />} />
+        <Route path="/login" element={<Login />} />
+        {/* Redirect old routes */}
+        <Route path="/admin-dashboard" element={<Navigate to="/" replace />} />
+        <Route path="/admin-login" element={<Navigate to="/login" replace />} />
       </Routes>
     </Router>
   )

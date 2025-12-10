@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import './AdminLogin.css'
+import './Login.css'
 
 const API_BASE_URL = 'http://localhost:3001/api'
 
-function AdminLogin() {
+function Login() {
   const navigate = useNavigate()
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
@@ -31,7 +31,7 @@ function AdminLogin() {
         localStorage.setItem('admin-user', JSON.stringify(result.data.user))
         
         // Navigate to dashboard
-        navigate('/admin-dashboard')
+        navigate('/')
       } else {
         setError(result.message || 'Login failed')
       }
@@ -122,11 +122,6 @@ function AdminLogin() {
             </button>
           </form>
 
-          <div className="login-footer">
-            <a href="/" className="login-back-link">
-              ← Back to Website
-            </a>
-          </div>
         </div>
 
         <div className="login-decoration">
@@ -137,5 +132,5 @@ function AdminLogin() {
   )
 }
 
-export default AdminLogin
+export default Login
 
