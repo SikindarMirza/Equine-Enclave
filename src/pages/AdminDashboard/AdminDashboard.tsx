@@ -1119,7 +1119,6 @@ function AdminDashboard() {
                   <tr key={rider.id} className={selectedRiderId === rider.id ? 'highlighted-row' : ''}>
                     <td>
                       <div className="rider-name">
-                        <span className="rider-avatar">🏇</span>
                         {rider.name}
                       </div>
                     </td>
@@ -1231,6 +1230,7 @@ function AdminDashboard() {
                         No riders with payment due in this batch
                       </div>
                     ) : (
+                      <div className="riders-table-wrapper">
                       <table className="riders-table">
                         <thead>
                           <tr>
@@ -1247,7 +1247,6 @@ function AdminDashboard() {
                             <tr key={rider.id}>
                               <td>
                                 <div className="rider-name">
-                                  <span className="rider-avatar">🏇</span>
                                   {rider.name}
                                 </div>
                               </td>
@@ -1292,6 +1291,7 @@ function AdminDashboard() {
                           ))}
                         </tbody>
                       </table>
+                      </div>
                     )}
                   </div>
                 )}
@@ -1367,6 +1367,7 @@ function AdminDashboard() {
                         No riders with payment due in this batch
                       </div>
                     ) : (
+                      <div className="riders-table-wrapper">
                       <table className="riders-table">
                         <thead>
                           <tr>
@@ -1383,7 +1384,6 @@ function AdminDashboard() {
                             <tr key={rider.id}>
                               <td>
                                 <div className="rider-name">
-                                  <span className="rider-avatar">🏇</span>
                                   {rider.name}
                                 </div>
                               </td>
@@ -1428,6 +1428,7 @@ function AdminDashboard() {
                           ))}
                         </tbody>
                       </table>
+                      </div>
                     )}
                   </div>
                 )}
@@ -1470,7 +1471,6 @@ function AdminDashboard() {
             </div>
             <div className="modal__body">
               <div className="modal__rider-info">
-                <div className="modal__rider-avatar">🏇</div>
                 <div className="modal__rider-details">
                   <h3 className="modal__rider-name">{checkinModal.rider.name}</h3>
                   <p className="modal__rider-meta">
@@ -1532,7 +1532,6 @@ function AdminDashboard() {
             </div>
             <div className="modal__body">
               <div className="modal__rider-info">
-                <div className="modal__rider-avatar">🏇</div>
                 <div className="modal__rider-details">
                   <h3 className="modal__rider-name">{deleteModal.rider.name}</h3>
                   <p className="modal__rider-meta">
@@ -1851,7 +1850,7 @@ function AdminDashboard() {
         <div className="modal-overlay" onClick={() => setAddRiderModal(false)}>
           <div className="modal modal--add-rider" onClick={(e) => e.stopPropagation()}>
             <div className="modal__header">
-              <h2 className="modal__title">🏇 Add New Rider</h2>
+              <h2 className="modal__title">Add New Rider</h2>
               <button 
                 className="modal__close"
                 onClick={() => setAddRiderModal(false)}
@@ -2031,7 +2030,6 @@ function AdminDashboard() {
               ) : assignBatchModal.isConfirming && assignBatchModal.targetBatchType !== null && assignBatchModal.targetBatchIndex !== null ? (
                 <>
                   <div className="modal__rider-info">
-                    <div className="modal__rider-avatar">🏇</div>
                     <div className="modal__rider-details">
                       <h3 className="modal__rider-name">{assignBatchModal.rider.name}</h3>
                     </div>
@@ -2068,7 +2066,6 @@ function AdminDashboard() {
               ) : (
                 <>
                   <div className="modal__rider-info">
-                    <div className="modal__rider-avatar">🏇</div>
                     <div className="modal__rider-details">
                       <h3 className="modal__rider-name">{assignBatchModal.rider.name}</h3>
                       <p className="modal__rider-meta">
@@ -2185,7 +2182,6 @@ function AdminDashboard() {
             </div>
             <div className="modal__body">
               <div className="modal__rider-info">
-                <div className="modal__rider-avatar">🏇</div>
                 <div className="modal__rider-details">
                   <h3 className="modal__rider-name">{paymentModal.rider.name}</h3>
                   <p className="modal__rider-meta">
