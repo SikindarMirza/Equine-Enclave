@@ -92,8 +92,8 @@ function Login() {
               <img src="/logo.png" alt="Equine Enclave Logo" className="login-brand-logo" />
             </div>
             <h1 className="login-brand-title">
-              <span className="login-brand-title__line">Equine</span>
-              <span className="login-brand-title__line login-brand-title__line--accent">Enclave</span>
+              <span className="login-brand-title__line">Equine Enclave</span>
+              {/* <span className="login-brand-title__line login-brand-title__line--accent">Enclave</span> */}
             </h1>
             <p className="login-brand-tagline">Ride like a pro</p>
           </div>

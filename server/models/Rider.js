@@ -1,14 +1,19 @@
 const mongoose = require('mongoose');
 
-// Schema for individual class/ride entry
-const classEntrySchema = new mongoose.Schema({
+// Schema for individual checkin record (combines ride tracking + horse info)
+const checkinSchema = new mongoose.Schema({
   rideNumber: {
     type: Number,
     required: true
   },
-  timestamp: {
+  checkinTime: {
     type: Date,
     default: Date.now
+  },
+  horse: {
+    type: String,
+    required: true,
+    trim: true
   }
 }, { _id: false });
 
@@ -35,8 +40,8 @@ const riderSchema = new mongoose.Schema({
     lowercase: true,
     default: ''
   },
-  activeClasses: {
-    type: [classEntrySchema],
+  checkins: {
+    type: [checkinSchema],
     default: []
   },
   level: {
@@ -72,7 +77,7 @@ const riderSchema = new mongoose.Schema({
 
 // Virtual for active classes count (for frontend compatibility)
 riderSchema.virtual('activeClassesCount').get(function() {
-  return this.activeClasses.length;
+  return this.checkins.length;
 });
 
 // Index for faster queries

@@ -23,6 +23,7 @@ function Home() {
   }, [])
 
   return (
+    <>
     <div className="app">
       {/* Navigation */}
       <nav className={`nav ${scrolled ? 'nav--scrolled' : ''}`}>
@@ -271,7 +272,33 @@ function Home() {
           </p>
         </div>
       </footer>
+
     </div>
+
+    {/* Mobile Bottom Navigation - Outside app container for proper fixed positioning */}
+    <nav className="mobile-nav">
+      <a href="#home" className={activeSection === 'home' ? 'mobile-nav__item active' : 'mobile-nav__item'}>
+        <span className="mobile-nav__icon">🏠</span>
+        <span className="mobile-nav__label">Home</span>
+      </a>
+      <a href="#about" className={activeSection === 'about' ? 'mobile-nav__item active' : 'mobile-nav__item'}>
+        <span className="mobile-nav__icon">📖</span>
+        <span className="mobile-nav__label">About</span>
+      </a>
+      <a href="#services" className={activeSection === 'services' ? 'mobile-nav__item active' : 'mobile-nav__item'}>
+        <span className="mobile-nav__icon">⭐</span>
+        <span className="mobile-nav__label">Services</span>
+      </a>
+      <a href="#gallery" className={activeSection === 'gallery' ? 'mobile-nav__item active' : 'mobile-nav__item'}>
+        <span className="mobile-nav__icon">🖼️</span>
+        <span className="mobile-nav__label">Gallery</span>
+      </a>
+      <a href="#contact" className={activeSection === 'contact' ? 'mobile-nav__item active' : 'mobile-nav__item'}>
+        <span className="mobile-nav__icon">📞</span>
+        <span className="mobile-nav__label">Contact</span>
+      </a>
+    </nav>
+    </>
   )
 }
 

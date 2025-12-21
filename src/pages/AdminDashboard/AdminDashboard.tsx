@@ -40,9 +40,10 @@ interface Horse {
   notes: string
 }
 
-interface ClassEntry {
+interface CheckinRecord {
   rideNumber: number
-  timestamp: string
+  checkinTime: string
+  horse: string
 }
 
 interface Rider {
@@ -52,7 +53,7 @@ interface Rider {
   age: number
   phone: string
   email: string
-  activeClasses: ClassEntry[]
+  checkins: CheckinRecord[]
   activeClassesCount: number
   level: 'beginner' | 'intermediate' | 'advanced'
   joinedDate: string
@@ -115,7 +116,9 @@ function AdminDashboard() {
     rider: Rider | null;
     batchType: 'morning' | 'evening';
     batchIndex: number;
-  }>({ isOpen: false, rider: null, batchType: 'morning', batchIndex: 0 })
+    selectedHorse: string;
+  }>({ isOpen: false, rider: null, batchType: 'morning', batchIndex: 0, selectedHorse: '' })
+  const [horseDropdownOpen, setHorseDropdownOpen] = useState(false)
   
   const [deleteModal, setDeleteModal] = useState<{
     isOpen: boolean;
@@ -157,11 +160,13 @@ function AdminDashboard() {
     addRider: { name?: string; age?: string; phone?: string };
     editRider: { name?: string; age?: string; phone?: string };
     editBatch: { name?: string; time?: string };
+    checkin: { horse?: string };
   }>({
     addBatch: {},
     addRider: {},
     editRider: {},
-    editBatch: {}
+    editBatch: {},
+    checkin: {}
   })
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<Array<Rider & { batchName: string; batchLabel: string }>>([])
@@ -784,18 +789,32 @@ function AdminDashboard() {
   const handleCheckin = async () => {
     if (!checkinModal.rider) return
     
+    // Validate horse selection
+    if (!checkinModal.selectedHorse) {
+      setFormErrors(prev => ({ ...prev, checkin: { horse: 'Please select a horse' } }))
+      return
+    }
+    
     const riderId = checkinModal.rider.id
     
     setLoading(true)
     try {
       const response = await fetch(`${API_BASE_URL}/riders/${riderId}/checkin`, {
-        method: 'PATCH'
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          horse: checkinModal.selectedHorse
+        })
       })
       const result = await response.json()
       
       if (result.success) {
         await fetchBatches() // Refresh data
-        setCheckinModal({ isOpen: false, rider: null, batchType: 'morning', batchIndex: 0 })
+        setCheckinModal({ isOpen: false, rider: null, batchType: 'morning', batchIndex: 0, selectedHorse: '' })
+        setHorseDropdownOpen(false)
+        setFormErrors(prev => ({ ...prev, checkin: {} }))
       } else {
         setLoading(false)
         alert(result.message || 'Failed to check in rider')
@@ -1292,10 +1311,10 @@ function AdminDashboard() {
                         <thead>
                           <tr>
                             <th>Name</th>
-                            <th>Age</th>
-                            <th>Active Classes</th>
+                            <th>Age</th>                            
                             <th>Level</th>
                             <th>Joined</th>
+                            <th>Active Classes</th>
                             <th>Actions</th>
                           </tr>
                         </thead>
@@ -1309,21 +1328,21 @@ function AdminDashboard() {
                               </td>
                               <td>{rider.age} yrs</td>
                               <td>
-                                <span className={`active-classes ${needsToPay(rider) ? 'active-classes--warning' : ''}`}>
-                                  {rider.activeClassesCount} classes
-                                </span>
-                              </td>
-                              <td>
                                 <span className={`level-badge level-badge--${rider.level}`}>
                                   {rider.level}
                                 </span>
                               </td>
                               <td title={rider.joinedDate}>{formatJoinedDate(rider.joinedDate)}</td>
                               <td>
+                                <span className={`active-classes ${needsToPay(rider) ? 'active-classes--warning' : ''}`}>
+                                  {rider.activeClassesCount} classes
+                                </span>
+                              </td>
+                              <td>
                                 <div className="rider-actions">
                                   <button 
                                     className="checkin-btn"
-                                    onClick={() => setCheckinModal({ isOpen: true, rider, batchType: 'morning', batchIndex: index })}
+                                    onClick={() => setCheckinModal({ isOpen: true, rider, batchType: 'morning', batchIndex: index, selectedHorse: '' })}
                                     title="Check-in"
                                   >
                                     Check-in
@@ -1460,7 +1479,7 @@ function AdminDashboard() {
                                 <div className="rider-actions">
                                   <button 
                                     className="checkin-btn"
-                                    onClick={() => setCheckinModal({ isOpen: true, rider, batchType: 'evening', batchIndex: index })}
+                                    onClick={() => setCheckinModal({ isOpen: true, rider, batchType: 'evening', batchIndex: index, selectedHorse: '' })}
                                     title="Check-in"
                                   >
                                     Check-in
@@ -1515,13 +1534,13 @@ function AdminDashboard() {
 
       {/* Check-in Confirmation Modal */}
       {checkinModal.isOpen && checkinModal.rider && (
-        <div className="modal-overlay" onClick={() => !loading && setCheckinModal({ isOpen: false, rider: null, batchType: 'morning', batchIndex: 0 })}>
+        <div className="modal-overlay" onClick={() => { if (!loading) { setCheckinModal({ isOpen: false, rider: null, batchType: 'morning', batchIndex: 0, selectedHorse: '' }); setHorseDropdownOpen(false); setFormErrors(prev => ({ ...prev, checkin: {} })); }}}>
           <div className="modal modal--checkin" onClick={(e) => e.stopPropagation()}>
             <div className="modal__header">
               <h2 className="modal__title">✅ Confirm Check-in</h2>
               <button 
                 className="modal__close"
-                onClick={() => !loading && setCheckinModal({ isOpen: false, rider: null, batchType: 'morning', batchIndex: 0 })}
+                onClick={() => { if (!loading) { setCheckinModal({ isOpen: false, rider: null, batchType: 'morning', batchIndex: 0, selectedHorse: '' }); setHorseDropdownOpen(false); setFormErrors(prev => ({ ...prev, checkin: {} })); }}}
                 disabled={loading}
               >
                 ✕
@@ -1553,6 +1572,49 @@ function AdminDashboard() {
                 </div>
               </div>
 
+              <div className={`form-field ${formErrors.checkin.horse ? 'form-field--error' : ''}`}>
+                <label>Select Horse *</label>
+                <div className="horse-dropdown">
+                  <div 
+                    className={`horse-dropdown__trigger ${horseDropdownOpen ? 'horse-dropdown__trigger--open' : ''} ${loading ? 'horse-dropdown__trigger--disabled' : ''}`}
+                    onClick={() => !loading && setHorseDropdownOpen(!horseDropdownOpen)}
+                  >
+                    <span className={`horse-dropdown__value ${!checkinModal.selectedHorse ? 'horse-dropdown__value--placeholder' : ''}`}>
+                      {checkinModal.selectedHorse || '-- Select a horse --'}
+                    </span>
+                    <span className="horse-dropdown__arrow">▼</span>
+                  </div>
+                  {horseDropdownOpen && (
+                    <>
+                      <div 
+                        className="horse-dropdown__overlay" 
+                        onClick={() => setHorseDropdownOpen(false)}
+                      />
+                      <div className="horse-dropdown__menu">
+                        {horses.filter(h => h.status === 'healthy').map(horse => (
+                          <div
+                            key={horse.id}
+                            className={`horse-dropdown__item ${checkinModal.selectedHorse === horse.name ? 'horse-dropdown__item--selected' : ''}`}
+                            onClick={() => {
+                              setCheckinModal(prev => ({ ...prev, selectedHorse: horse.name }))
+                              setHorseDropdownOpen(false)
+                              if (formErrors.checkin.horse) {
+                                setFormErrors(prev => ({ ...prev, checkin: {} }))
+                              }
+                            }}
+                          >
+                            <span className="horse-dropdown__item-name">{horse.name}</span>
+                            <span className="horse-dropdown__item-breed">{horse.breed}</span>
+                            {checkinModal.selectedHorse === horse.name && <span className="horse-dropdown__check">✓</span>}
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+                {formErrors.checkin.horse && <span className="form-field__error">{formErrors.checkin.horse}</span>}
+              </div>
+
               <p className="modal__message">
                 Confirm check-in for <strong>{checkinModal.rider.name}</strong>? This will add 1 class to their active classes count.
               </p>
@@ -1560,7 +1622,7 @@ function AdminDashboard() {
             <div className="modal__footer">
               <button 
                 className="modal__btn modal__btn--cancel"
-                onClick={() => setCheckinModal({ isOpen: false, rider: null, batchType: 'morning', batchIndex: 0 })}
+                onClick={() => { setCheckinModal({ isOpen: false, rider: null, batchType: 'morning', batchIndex: 0, selectedHorse: '' }); setHorseDropdownOpen(false); setFormErrors(prev => ({ ...prev, checkin: {} })); }}
                 disabled={loading}
               >
                 Cancel
@@ -1568,7 +1630,7 @@ function AdminDashboard() {
               <button 
                 className={`modal__btn modal__btn--checkin ${loading ? 'modal__btn--loading' : ''}`}
                 onClick={handleCheckin}
-                disabled={loading}
+                disabled={loading || !checkinModal.selectedHorse}
               >
                 {loading && <span className="btn-spinner"></span>}
                 {loading ? 'Checking in...' : '✓ Confirm Check-in'}

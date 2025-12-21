@@ -14,7 +14,7 @@
   justify-content: center;
   position: relative;
   overflow: hidden;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
 /* ===========================
@@ -212,8 +212,8 @@
 }
 
 .login-brand-icon {
-  width: 120px;
-  height: 120px;
+  width: 180px;
+  height: 180px;
   margin-bottom: 1.5rem;
   animation: float 6s ease-in-out infinite;
 }
@@ -222,8 +222,8 @@
   width: 100%;
   height: 100%;
   object-fit: contain;
-  border-radius: 12px;
-  filter: drop-shadow(0 10px 30px rgba(212, 175, 55, 0.3));
+  border-radius: 16px;
+  filter: drop-shadow(0 15px 40px rgba(212, 175, 55, 0.4));
 }
 
 @keyframes float {
@@ -244,7 +244,7 @@
 
 .login-brand-title__line {
   display: block;
-  font-family: 'Playfair Display', Georgia, serif;
+  font-family: var(--font-display);
   font-size: 3.5rem;
   font-weight: 700;
   color: #ffffff;
@@ -323,7 +323,7 @@
 
 .login-title {
   margin: 0 0 0.5rem 0;
-  font-family: 'Playfair Display', Georgia, serif;
+  font-family: var(--font-display);
   font-size: 2rem;
   font-weight: 600;
   color: #ffffff;
@@ -624,8 +624,8 @@
 
   .login-brand-icon {
     margin: 0 auto 1.5rem;
-    width: 100px;
-    height: 100px;
+    width: 140px;
+    height: 140px;
   }
 
   .login-brand-title__line {
@@ -657,8 +657,8 @@
   }
 
   .login-brand-icon {
-    width: 80px;
-    height: 80px;
+    width: 120px;
+    height: 120px;
     margin-bottom: 1rem;
   }
 

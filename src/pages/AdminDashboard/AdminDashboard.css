@@ -138,6 +138,16 @@
   display: flex;
   min-height: 100vh;
   background: var(--bg-primary);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+}
+
+/* Force Inter on all elements within admin */
+.admin * {
+  font-family: inherit;
+}
+
+.admin *:not(.modal__title):not(.batch__name):not(.batch-card__name):not(.horse-card__name) {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
 /* ===========================
@@ -199,7 +209,7 @@
   border-radius: 12px;
   color: #8892b0;
   font-size: 0.95rem;
-  font-family: var(--font-body);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   cursor: pointer;
   transition: all 0.2s ease;
   text-align: left;
@@ -478,6 +488,150 @@
   border-bottom: 1px solid var(--border-color-light);
 }
 
+/* Horse Selection Dropdown */
+.horse-dropdown {
+  position: relative;
+  width: 100%;
+}
+
+.horse-dropdown__trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.horse-dropdown__trigger:hover:not(.horse-dropdown__trigger--disabled) {
+  border-color: rgba(212, 175, 55, 0.4);
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.horse-dropdown__trigger--open {
+  border-color: var(--accent-primary);
+  background: rgba(212, 175, 55, 0.1);
+  box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.1);
+}
+
+.horse-dropdown__trigger--disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.horse-dropdown__value {
+  font-size: 0.95rem;
+  color: var(--text-primary);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.horse-dropdown__value--placeholder {
+  color: #8892b0;
+}
+
+.horse-dropdown__arrow {
+  font-size: 0.65rem;
+  color: #8892b0;
+  transition: transform 0.2s ease;
+}
+
+.horse-dropdown__trigger--open .horse-dropdown__arrow {
+  transform: rotate(180deg);
+  color: var(--accent-primary);
+}
+
+.horse-dropdown__overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 199;
+}
+
+.horse-dropdown__menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  max-height: 250px;
+  overflow-y: auto;
+  background: var(--modal-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+  z-index: 200;
+  animation: dropdownSlideIn 0.15s ease-out;
+}
+
+@keyframes dropdownSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.horse-dropdown__menu::-webkit-scrollbar {
+  width: 6px;
+}
+
+.horse-dropdown__menu::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.horse-dropdown__menu::-webkit-scrollbar-thumb {
+  background: rgba(212, 175, 55, 0.3);
+  border-radius: 3px;
+}
+
+.horse-dropdown__item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border-bottom: 1px solid var(--border-color-light);
+}
+
+.horse-dropdown__item:last-child {
+  border-bottom: none;
+}
+
+.horse-dropdown__item:hover {
+  background: rgba(212, 175, 55, 0.1);
+}
+
+.horse-dropdown__item--selected {
+  background: rgba(212, 175, 55, 0.15);
+}
+
+.horse-dropdown__item-name {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.horse-dropdown__item--selected .horse-dropdown__item-name {
+  color: var(--accent-primary);
+}
+
+.horse-dropdown__item-breed {
+  font-size: 0.8rem;
+  color: #8892b0;
+  flex: 1;
+}
+
+.horse-dropdown__check {
+  color: var(--accent-primary);
+  font-size: 1rem;
+  font-weight: 600;
+}
+
 .admin__search input {
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -486,7 +640,7 @@
   color: #f0f0f0;
   font-size: 0.9rem;
   width: 220px;
-  font-family: var(--font-body);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   transition: all 0.2s ease;
 }
 
@@ -845,7 +999,7 @@
   color: #d4af37;
   font-size: 0.85rem;
   cursor: pointer;
-  font-family: var(--font-body);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   transition: color 0.2s ease;
 }
 
@@ -1010,7 +1164,7 @@
   border-radius: 12px;
   cursor: pointer;
   transition: all 0.2s ease;
-  font-family: var(--font-body);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
 .quick-action:hover {
@@ -1332,7 +1486,7 @@
   border-radius: 10px;
   font-size: 0.85rem;
   font-weight: 500;
-  font-family: var(--font-body);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   cursor: pointer;
   transition: all 0.2s ease;
 }
@@ -1373,7 +1527,7 @@
   color: #1a1a2e;
   font-size: 0.95rem;
   font-weight: 600;
-  font-family: var(--font-body);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   cursor: pointer;
   box-shadow: 0 10px 30px rgba(212, 175, 55, 0.3);
   transition: all 0.3s ease;
@@ -1519,7 +1673,7 @@
   border-radius: 8px;
   font-size: 0.85rem;
   font-weight: 500;
-  font-family: var(--font-body);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   cursor: pointer;
   transition: all 0.2s ease;
   background: rgba(255, 255, 255, 0.05);
@@ -1668,7 +1822,7 @@
   border-radius: 8px;
   color: #f0f0f0;
   font-size: 0.95rem;
-  font-family: var(--font-body);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   transition: all 0.2s ease;
 }
 
@@ -1914,7 +2068,7 @@
   border-radius: 8px;
   font-size: 0.75rem;
   font-weight: 600;
-  font-family: var(--font-body);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   cursor: pointer;
   transition: all 0.2s ease;
   background: rgba(241, 196, 15, 0.15);
@@ -1933,7 +2087,7 @@
   border-radius: 8px;
   font-size: 0.75rem;
   font-weight: 600;
-  font-family: var(--font-body);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   cursor: pointer;
   transition: all 0.2s ease;
   background: rgba(231, 76, 60, 0.15);
@@ -2260,7 +2414,7 @@
   color: #1a1a2e;
   font-size: 0.95rem;
   font-weight: 600;
-  font-family: var(--font-body);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   cursor: pointer;
   box-shadow: 0 10px 30px rgba(212, 175, 55, 0.3);
   transition: all 0.3s ease;
@@ -2301,7 +2455,7 @@
   border-radius: 8px;
   font-size: 0.8rem;
   font-weight: 600;
-  font-family: var(--font-body);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   cursor: pointer;
   transition: all 0.2s ease;
   white-space: nowrap;
@@ -2342,7 +2496,7 @@
   border-radius: 8px;
   font-size: 0.75rem;
   font-weight: 600;
-  font-family: var(--font-body);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   cursor: pointer;
   transition: all 0.2s ease;
   background: rgba(52, 152, 219, 0.15);
@@ -2361,7 +2515,7 @@
   border-radius: 8px;
   font-size: 0.75rem;
   font-weight: 600;
-  font-family: var(--font-body);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   cursor: pointer;
   transition: all 0.2s ease;
   background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
@@ -2565,7 +2719,7 @@
   border-radius: 10px;
   font-size: 0.95rem;
   font-weight: 500;
-  font-family: var(--font-body);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   cursor: pointer;
   transition: all 0.2s ease;
 }
@@ -2774,7 +2928,7 @@
   border-radius: 10px;
   cursor: pointer;
   transition: all 0.2s ease;
-  font-family: var(--font-body);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   text-align: left;
 }
 
@@ -2997,7 +3151,7 @@
   border-radius: 10px;
   color: #f0f0f0;
   font-size: 0.95rem;
-  font-family: var(--font-body);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   transition: all 0.2s ease;
 }
 
@@ -3290,6 +3444,40 @@
 
 .admin.theme-light .max-persons-dropdown__item:hover {
   background: rgba(139, 105, 20, 0.08);
+}
+
+/* Light theme - Horse Dropdown */
+.admin.theme-light .horse-dropdown__trigger {
+  background: #ffffff;
+  border-color: #d4cfc5;
+}
+
+.admin.theme-light .horse-dropdown__trigger:hover:not(.horse-dropdown__trigger--disabled) {
+  background: #faf8f5;
+  border-color: var(--accent-primary);
+}
+
+.admin.theme-light .horse-dropdown__trigger--open {
+  background: rgba(139, 105, 20, 0.05);
+  border-color: var(--accent-primary);
+}
+
+.admin.theme-light .horse-dropdown__menu {
+  background: #ffffff;
+  border-color: #d4cfc5;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+}
+
+.admin.theme-light .horse-dropdown__item:hover {
+  background: rgba(139, 105, 20, 0.08);
+}
+
+.admin.theme-light .horse-dropdown__item--selected {
+  background: rgba(139, 105, 20, 0.12);
+}
+
+.admin.theme-light .horse-dropdown__item-breed {
+  color: #6b7280;
 }
 
 .admin.theme-light .batch-option {
@@ -3682,6 +3870,42 @@
   
   .admin__card-title {
     font-size: 1rem;
+  }
+  
+  /* Admin Table - Mobile */
+  .admin__table-wrapper {
+    margin: 0 -1rem;
+    padding: 0 0.5rem;
+  }
+  
+  .admin__table th,
+  .admin__table td {
+    padding: 0.65rem 0.5rem;
+    font-size: 0.8rem;
+  }
+  
+  .admin__table th {
+    font-size: 0.65rem;
+  }
+  
+  .admin__table td:first-child {
+    max-width: 90px;
+    word-wrap: break-word;
+  }
+  
+  .admin__table td:nth-child(2) {
+    max-width: 70px;
+    word-wrap: break-word;
+  }
+  
+  .admin__table td:nth-child(3) {
+    white-space: nowrap;
+    font-size: 0.75rem;
+  }
+  
+  .status-badge {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.65rem;
   }
   
   /* Quick Actions */
@@ -4593,6 +4817,70 @@
   .modal {
     box-shadow: none;
     border: 1px solid #ccc;
+  }
+}
+
+/* Extra Small Screens */
+@media (max-width: 400px) {
+  .admin__main {
+    padding: 0.75rem;
+    padding-bottom: 85px;
+  }
+  
+  .admin__title {
+    font-size: 1.2rem;
+  }
+  
+  .admin__card {
+    padding: 0.75rem;
+  }
+  
+  .admin__card-title {
+    font-size: 0.9rem;
+  }
+  
+  .admin__card-action {
+    font-size: 0.75rem;
+  }
+  
+  .admin__table th,
+  .admin__table td {
+    padding: 0.5rem 0.35rem;
+    font-size: 0.75rem;
+  }
+  
+  .admin__table th {
+    font-size: 0.6rem;
+  }
+  
+  .status-badge {
+    padding: 0.2rem 0.4rem;
+    font-size: 0.6rem;
+  }
+  
+  .stat-card {
+    padding: 0.75rem;
+  }
+  
+  .stat-card__value {
+    font-size: 1.25rem;
+  }
+  
+  .stat-card__label {
+    font-size: 0.65rem;
+  }
+  
+  .admin__nav-item {
+    min-width: 50px;
+    padding: 0.5rem 0.35rem;
+  }
+  
+  .admin__nav-icon {
+    font-size: 1rem;
+  }
+  
+  .admin__nav-item span:not(.admin__nav-icon) {
+    font-size: 0.5rem;
   }
 }
 
