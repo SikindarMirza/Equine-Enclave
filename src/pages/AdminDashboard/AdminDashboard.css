@@ -351,6 +351,27 @@
   font-size: 0.95rem;
 }
 
+.admin__header-left {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.admin__header-titles {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Header logo - hidden on desktop, shown on mobile */
+.admin__header-logo {
+  display: none;
+  width: 45px;
+  height: 45px;
+  border-radius: 10px;
+  object-fit: cover;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
 .admin__header-right {
   display: flex;
   align-items: center;
@@ -2100,6 +2121,29 @@
   transform: translateY(-1px);
 }
 
+/* Export Button */
+.export-btn {
+  padding: 0.4rem 0.7rem;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: rgba(52, 152, 219, 0.15);
+  border: 1px solid rgba(52, 152, 219, 0.3);
+  color: #3498db;
+}
+
+.export-btn:hover {
+  background: rgba(52, 152, 219, 0.25);
+  transform: translateY(-1px);
+}
+
+.export-btn:active {
+  transform: translateY(0);
+}
+
 /* Delete Modal */
 .modal--delete {
   max-width: 420px;
@@ -3730,6 +3774,16 @@
   .admin__header-left {
     width: 100%;
     margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  
+  .admin__header-logo {
+    display: block;
+    width: 40px;
+    height: 40px;
+    flex-shrink: 0;
   }
   
   .admin__title {

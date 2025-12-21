@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { jsPDF } from 'jspdf'
 import './AdminDashboard.css'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:3001/api' : '/api')
@@ -508,6 +509,139 @@ function AdminDashboard() {
     const month = months[date.getMonth()]
     const year = date.getFullYear()
     return `${month}${year}`
+  }
+
+  // Export rider check-in history to PDF
+  const exportRiderPDF = (rider: Rider, batchType: 'morning' | 'evening', batchIndex: number) => {
+    const doc = new jsPDF()
+    const pageWidth = doc.internal.pageSize.getWidth()
+    
+    // Get batch name
+    const batches = batchType === 'morning' ? morningBatches : eveningBatches
+    const batchName = batches[batchIndex]?.name || `Batch ${batchIndex + 1}`
+    
+    // Title
+    doc.setFontSize(20)
+    doc.setFont('helvetica', 'bold')
+    doc.text('Equine Enclave', pageWidth / 2, 20, { align: 'center' })
+    
+    doc.setFontSize(14)
+    doc.setFont('helvetica', 'normal')
+    doc.text('Rider Check-in Report', pageWidth / 2, 30, { align: 'center' })
+    
+    // Horizontal line
+    doc.setLineWidth(0.5)
+    doc.line(20, 35, pageWidth - 20, 35)
+    
+    // Rider details section
+    doc.setFontSize(12)
+    doc.setFont('helvetica', 'bold')
+    doc.text('Rider Details', 20, 45)
+    
+    doc.setFontSize(10)
+    doc.setFont('helvetica', 'normal')
+    let y = 55
+    doc.text(`Name: ${rider.name}`, 20, y)
+    doc.text(`Age: ${rider.age} years`, 120, y)
+    y += 8
+    doc.text(`Level: ${rider.level.charAt(0).toUpperCase() + rider.level.slice(1)}`, 20, y)
+    doc.text(`Batch: ${batchType.charAt(0).toUpperCase() + batchType.slice(1)} - ${batchName}`, 120, y)
+    y += 8
+    doc.text(`Phone: ${rider.phone}`, 20, y)
+    doc.text(`Email: ${rider.email || 'N/A'}`, 120, y)
+    y += 8
+    doc.text(`Joined: ${rider.joinedDate}`, 20, y)
+    doc.text(`Total Classes: ${rider.activeClassesCount}`, 120, y)
+    
+    // Check-ins section
+    y += 15
+    doc.setLineWidth(0.3)
+    doc.line(20, y, pageWidth - 20, y)
+    y += 10
+    
+    doc.setFontSize(12)
+    doc.setFont('helvetica', 'bold')
+    doc.text('Check-in History', 20, y)
+    y += 10
+    
+    // Table headers
+    doc.setFontSize(9)
+    doc.setFont('helvetica', 'bold')
+    doc.text('Ride #', 20, y)
+    doc.text('Date', 50, y)
+    doc.text('Time', 100, y)
+    doc.text('Horse', 140, y)
+    y += 3
+    doc.setLineWidth(0.2)
+    doc.line(20, y, pageWidth - 20, y)
+    y += 7
+    
+    // Table rows
+    doc.setFont('helvetica', 'normal')
+    const checkins = rider.checkins || []
+    
+    // Sort checkins by date (newest first)
+    const sortedCheckins = [...checkins].sort((a, b) => 
+      new Date(b.checkinTime).getTime() - new Date(a.checkinTime).getTime()
+    )
+    
+    sortedCheckins.forEach((checkin, index) => {
+      // Check if we need a new page
+      if (y > 270) {
+        doc.addPage()
+        y = 20
+        // Re-add headers on new page
+        doc.setFont('helvetica', 'bold')
+        doc.text('Ride #', 20, y)
+        doc.text('Date', 50, y)
+        doc.text('Time', 100, y)
+        doc.text('Horse', 140, y)
+        y += 3
+        doc.line(20, y, pageWidth - 20, y)
+        y += 7
+        doc.setFont('helvetica', 'normal')
+      }
+      
+      const checkinDate = new Date(checkin.checkinTime)
+      const dateStr = checkinDate.toLocaleDateString('en-IN', { 
+        day: '2-digit', 
+        month: 'short', 
+        year: 'numeric' 
+      })
+      const timeStr = checkinDate.toLocaleTimeString('en-IN', { 
+        hour: '2-digit', 
+        minute: '2-digit',
+        hour12: true 
+      })
+      
+      doc.text(String(checkin.rideNumber), 20, y)
+      doc.text(dateStr, 50, y)
+      doc.text(timeStr, 100, y)
+      doc.text(checkin.horse || 'N/A', 140, y)
+      y += 7
+    })
+    
+    if (checkins.length === 0) {
+      doc.text('No check-ins recorded yet.', 20, y)
+    }
+    
+    // Footer
+    const pageCount = doc.getNumberOfPages()
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i)
+      doc.setFontSize(8)
+      doc.setFont('helvetica', 'italic')
+      doc.text(
+        `Generated on ${new Date().toLocaleString('en-IN')} | Page ${i} of ${pageCount}`,
+        pageWidth / 2,
+        290,
+        { align: 'center' }
+      )
+    }
+    
+    // Save the PDF
+    const fileName = `${rider.name.replace(/\s+/g, '_')}_checkins_${new Date().toISOString().split('T')[0]}.pdf`
+    doc.save(fileName)
   }
 
   // Get all riders with their batch info
@@ -1227,6 +1361,13 @@ function AdminDashboard() {
                         >
                           Remove
                         </button>
+                        <button 
+                          className="export-btn"
+                          onClick={() => exportRiderPDF(rider, batchType, batchIndex)}
+                          title="Export PDF"
+                        >
+                          Export
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -1360,6 +1501,13 @@ function AdminDashboard() {
                                     disabled={!needsToPay(rider)}
                                   >
                                     {needsToPay(rider) ? 'Pay' : 'Paid ✓'}
+                                  </button>
+                                  <button 
+                                    className="export-btn"
+                                    onClick={() => exportRiderPDF(rider, 'morning', index)}
+                                    title="Export PDF"
+                                  >
+                                    Export
                                   </button>
                                 </div>
                               </td>
@@ -1497,6 +1645,13 @@ function AdminDashboard() {
                                     disabled={!needsToPay(rider)}
                                   >
                                     {needsToPay(rider) ? 'Pay' : 'Paid ✓'}
+                                  </button>
+                                  <button 
+                                    className="export-btn"
+                                    onClick={() => exportRiderPDF(rider, 'evening', index)}
+                                    title="Export PDF"
+                                  >
+                                    Export
                                   </button>
                                 </div>
                               </td>
@@ -2557,8 +2712,11 @@ function AdminDashboard() {
         {/* Header */}
         <header className="admin__header">
           <div className="admin__header-left">
-            <h1 className="admin__title">{getPageTitle()}</h1>
-            <p className="admin__subtitle">{getPageSubtitle()}</p>
+            <img src="/logo.png" alt="Equine Enclave" className="admin__header-logo" />
+            <div className="admin__header-titles">
+              <h1 className="admin__title">{getPageTitle()}</h1>
+              <p className="admin__subtitle">{getPageSubtitle()}</p>
+            </div>
           </div>
           <div className="admin__header-right">
             <div className="admin__header-controls">

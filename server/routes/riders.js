@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Rider = require('../models/Rider');
 const Batch = require('../models/Batch');
+const Ride = require('../models/Ride');
 
 // Helper to get batch config from database
 const getBatchConfig = async () => {
@@ -258,7 +259,7 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// PATCH check-in rider (add new checkin record)
+// PATCH check-in rider (add new checkin record and create a Ride)
 router.patch('/:id/checkin', async (req, res) => {
   try {
     const { horse } = req.body;
@@ -280,21 +281,45 @@ router.patch('/:id/checkin', async (req, res) => {
       });
     }
     
-    // Add new checkin record with ride number, time, and horse
+    const checkinTime = new Date();
     const newRideNumber = rider.checkins.length + 1;
+    
+    // Get batch config to retrieve batch name
+    const batchConfig = await getBatchConfig();
+    const batchName = batchConfig?.[rider.batchType]?.[rider.batchIndex]?.name || `Batch ${rider.batchIndex + 1}`;
+    
+    // Add checkin record to rider
     rider.checkins.push({
       rideNumber: newRideNumber,
-      checkinTime: new Date(),
+      checkinTime: checkinTime,
       horse: horse
     });
     
-    const updatedRider = await rider.save();
-    const batchConfig = await getBatchConfig();
+    // Save rider and create Ride in parallel (independent operations)
+    const [updatedRider, savedRide] = await Promise.all([
+      rider.save(),
+      Ride.create({
+        rideTime: checkinTime,
+        riderName: rider.name,
+        riderId: rider._id,
+        riderLevel: rider.level,
+        horse: horse,
+        batchType: rider.batchType,
+        batchName: batchName
+      })
+    ]);
     
     res.json({
       success: true,
       message: 'Check-in successful',
-      data: formatRider(updatedRider, batchConfig)
+      data: formatRider(updatedRider, batchConfig),
+      ride: {
+        id: savedRide._id,
+        rideTime: savedRide.rideTime,
+        riderName: savedRide.riderName,
+        riderLevel: savedRide.riderLevel,
+        horse: savedRide.horse
+      }
     });
   } catch (error) {
     res.status(500).json({

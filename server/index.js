@@ -6,6 +6,7 @@ const connectDB = require('./config/database');
 const ridersRouter = require('./routes/riders');
 const batchesRouter = require('./routes/batches');
 const authRouter = require('./routes/auth');
+const ridesRouter = require('./routes/rides');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -27,6 +28,7 @@ app.use((req, res, next) => {
 app.use('/api/auth', authRouter);
 app.use('/api/riders', ridersRouter);
 app.use('/api/batches', batchesRouter);
+app.use('/api/rides', ridesRouter);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
@@ -70,7 +72,7 @@ app.listen(PORT, () => {
 ║  Server running on: http://localhost:${PORT}      ║
 ║  Database: MongoDB                             ║
 ║                                                ║
-║  Available endpoints:                          ║
+║  Rider endpoints:                              ║
 ║  • GET    /api/riders           - All riders   ║
 ║  • GET    /api/riders/batches   - All batches  ║
 ║  • GET    /api/riders/:id       - Single rider ║
@@ -81,6 +83,13 @@ app.listen(PORT, () => {
 ║  • PATCH  /api/riders/:id/move  - Move batch   ║
 ║  • DELETE /api/riders/:id       - Delete rider ║
 ║  • POST   /api/riders/seed      - Seed data    ║
+║                                                ║
+║  Ride endpoints:                               ║
+║  • GET    /api/rides            - All rides    ║
+║  • GET    /api/rides/:id        - Single ride  ║
+║  • GET    /api/rides/rider/:id  - Rider rides  ║
+║  • GET    /api/rides/stats/summary - Stats     ║
+║  • DELETE /api/rides/:id        - Delete ride  ║
 ╚════════════════════════════════════════════════╝
   `);
 });
