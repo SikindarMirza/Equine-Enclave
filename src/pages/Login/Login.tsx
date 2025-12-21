@@ -89,16 +89,7 @@ function Login() {
         <div className="login-branding">
           <div className="login-branding__inner">
             <div className="login-brand-icon">
-              <svg viewBox="0 0 100 100" className="login-brand-svg">
-                <defs>
-                  <linearGradient id="goldGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="#f4d03f" />
-                    <stop offset="50%" stopColor="#d4af37" />
-                    <stop offset="100%" stopColor="#c4a77d" />
-                  </linearGradient>
-                </defs>
-                <text x="50" y="65" textAnchor="middle" fontSize="50" fill="url(#goldGradient)" fontFamily="serif">🐴</text>
-              </svg>
+              <img src="/logo.png" alt="Equine Enclave Logo" className="login-brand-logo" />
             </div>
             <h1 className="login-brand-title">
               <span className="login-brand-title__line">Equine</span>

@@ -150,6 +150,19 @@ function AdminDashboard() {
   
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  
+  // Form validation errors
+  const [formErrors, setFormErrors] = useState<{
+    addBatch: { name?: string; time?: string };
+    addRider: { name?: string; age?: string; phone?: string };
+    editRider: { name?: string; age?: string; phone?: string };
+    editBatch: { name?: string; time?: string };
+  }>({
+    addBatch: {},
+    addRider: {},
+    editRider: {},
+    editBatch: {}
+  })
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<Array<Rider & { batchName: string; batchLabel: string }>>([])
   const [showSearchResults, setShowSearchResults] = useState(false)
@@ -324,6 +337,18 @@ function AdminDashboard() {
   const handleSaveBatchTiming = async () => {
     const { batchType, batchIndex, name, time } = editBatchModal
     
+    // Validate fields
+    const errors: { name?: string; time?: string } = {}
+    if (!name.trim()) errors.name = 'Batch name is required'
+    if (!time.trim()) errors.time = 'Timing is required'
+    
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(prev => ({ ...prev, editBatch: errors }))
+      return
+    }
+    
+    setFormErrors(prev => ({ ...prev, editBatch: {} }))
+    setLoading(true)
     try {
       const response = await fetch(`${API_BASE_URL}/batches/by-type/${batchType}/${batchIndex}`, {
         method: 'PUT',
@@ -336,11 +361,13 @@ function AdminDashboard() {
         await fetchBatches() // Refresh data
         setEditBatchModal({ isOpen: false, batchType: 'morning', batchIndex: 0, name: '', time: '' })
       } else {
-        alert(result.message || 'Failed to update batch timing')
+        setLoading(false)
+        setFormErrors(prev => ({ ...prev, editBatch: { name: result.message || 'Failed to update batch timing' } }))
       }
     } catch (err) {
       console.error('Error updating batch timing:', err)
-      alert('Failed to update batch timing')
+      setLoading(false)
+      setFormErrors(prev => ({ ...prev, editBatch: { name: 'Failed to update batch timing. Please try again.' } }))
     }
   }
 
@@ -348,11 +375,18 @@ function AdminDashboard() {
   const handleAddBatch = async () => {
     const { batchType, name, time } = addBatchModal
     
-    if (!name || !time) {
-      alert('Please fill in all fields')
+    // Validate fields
+    const errors: { name?: string; time?: string } = {}
+    if (!name.trim()) errors.name = 'Batch name is required'
+    if (!time.trim()) errors.time = 'Timing is required'
+    
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(prev => ({ ...prev, addBatch: errors }))
       return
     }
     
+    setFormErrors(prev => ({ ...prev, addBatch: {} }))
+    setLoading(true)
     try {
       const response = await fetch(`${API_BASE_URL}/batches`, {
         method: 'POST',
@@ -365,11 +399,13 @@ function AdminDashboard() {
         await fetchBatches() // Refresh data
         setAddBatchModal({ isOpen: false, batchType: 'morning', name: '', time: '' })
       } else {
-        alert(result.message || 'Failed to add batch')
+        setLoading(false)
+        setFormErrors(prev => ({ ...prev, addBatch: { name: result.message || 'Failed to add batch' } }))
       }
     } catch (err) {
       console.error('Error adding batch:', err)
-      alert('Failed to add batch')
+      setLoading(false)
+      setFormErrors(prev => ({ ...prev, addBatch: { name: 'Failed to add batch. Please try again.' } }))
     }
   }
 
@@ -380,6 +416,7 @@ function AdminDashboard() {
       return
     }
     
+    setLoading(true)
     try {
       const response = await fetch(`${API_BASE_URL}/batches/${deleteBatchModal.batch._id}`, {
         method: 'DELETE'
@@ -390,10 +427,12 @@ function AdminDashboard() {
         await fetchBatches() // Refresh data
         setDeleteBatchModal({ isOpen: false, batch: null, batchType: 'morning' })
       } else {
+        setLoading(false)
         alert(result.message || 'Failed to delete batch')
       }
     } catch (err) {
       console.error('Error deleting batch:', err)
+      setLoading(false)
       alert('Failed to delete batch')
     }
   }
@@ -513,6 +552,7 @@ function AdminDashboard() {
     
     const riderId = deleteModal.rider.id
     
+    setLoading(true)
     try {
       const response = await fetch(`${API_BASE_URL}/riders/${riderId}`, {
         method: 'DELETE'
@@ -521,15 +561,16 @@ function AdminDashboard() {
       
       if (result.success) {
         await fetchBatches() // Refresh data
+        setDeleteModal({ isOpen: false, rider: null, batchType: 'morning', batchIndex: 0 })
       } else {
+        setLoading(false)
         alert(result.message || 'Failed to delete rider')
       }
     } catch (err) {
       console.error('Error deleting rider:', err)
+      setLoading(false)
       alert('Failed to delete rider')
     }
-    
-    setDeleteModal({ isOpen: false, rider: null, batchType: 'morning', batchIndex: 0 })
   }
 
   // Open edit modal with rider data
@@ -550,6 +591,7 @@ function AdminDashboard() {
     
     const riderId = editRiderModal.rider.id
     
+    setLoading(true)
     try {
       const response = await fetch(`${API_BASE_URL}/riders/${riderId}`, {
         method: 'PUT',
@@ -566,15 +608,16 @@ function AdminDashboard() {
       
       if (result.success) {
         await fetchBatches() // Refresh data
+        setEditRiderModal({ isOpen: false, rider: null, batchType: 'morning', batchIndex: 0 })
       } else {
+        setLoading(false)
         alert(result.message || 'Failed to update rider')
       }
     } catch (err) {
       console.error('Error updating rider:', err)
+      setLoading(false)
       alert('Failed to update rider')
     }
-    
-    setEditRiderModal({ isOpen: false, rider: null, batchType: 'morning', batchIndex: 0 })
   }
 
   // Filter riders based on selected filter
@@ -600,6 +643,7 @@ function AdminDashboard() {
     
     const riderId = paymentModal.rider.id
     
+    setLoading(true)
     try {
       const response = await fetch(`${API_BASE_URL}/riders/${riderId}/pay`, {
         method: 'PATCH'
@@ -608,15 +652,16 @@ function AdminDashboard() {
       
       if (result.success) {
         await fetchBatches() // Refresh data
+        setPaymentModal({ isOpen: false, rider: null, batchType: 'morning', batchIndex: 0 })
       } else {
+        setLoading(false)
         alert(result.message || 'Failed to process payment')
       }
     } catch (err) {
       console.error('Error processing payment:', err)
+      setLoading(false)
       alert('Failed to process payment')
     }
-    
-    setPaymentModal({ isOpen: false, rider: null, batchType: 'morning', batchIndex: 0 })
   }
 
   // Function to select target batch (shows confirmation)
@@ -682,11 +727,19 @@ function AdminDashboard() {
 
   // Function to add a new rider
   const handleAddRider = async () => {
-    if (!newRider.name || !newRider.age || !newRider.phone) {
-      alert('Please fill in all required fields')
+    // Validate fields
+    const errors: { name?: string; age?: string; phone?: string } = {}
+    if (!newRider.name.trim()) errors.name = 'Name is required'
+    if (!newRider.age) errors.age = 'Age is required'
+    if (!newRider.phone.trim()) errors.phone = 'Phone is required'
+    
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(prev => ({ ...prev, addRider: errors }))
       return
     }
 
+    setFormErrors(prev => ({ ...prev, addRider: {} }))
+    setLoading(true)
     try {
       const response = await fetch(`${API_BASE_URL}/riders`, {
         method: 'POST',
@@ -717,11 +770,13 @@ function AdminDashboard() {
         })
         setAddRiderModal(false)
       } else {
-        alert(result.message || 'Failed to add rider')
+        setLoading(false)
+        setFormErrors(prev => ({ ...prev, addRider: { name: result.message || 'Failed to add rider' } }))
       }
     } catch (err) {
       console.error('Error adding rider:', err)
-      alert('Failed to add rider')
+      setLoading(false)
+      setFormErrors(prev => ({ ...prev, addRider: { name: 'Failed to add rider. Please try again.' } }))
     }
   }
 
@@ -731,6 +786,7 @@ function AdminDashboard() {
     
     const riderId = checkinModal.rider.id
     
+    setLoading(true)
     try {
       const response = await fetch(`${API_BASE_URL}/riders/${riderId}/checkin`, {
         method: 'PATCH'
@@ -739,15 +795,16 @@ function AdminDashboard() {
       
       if (result.success) {
         await fetchBatches() // Refresh data
+        setCheckinModal({ isOpen: false, rider: null, batchType: 'morning', batchIndex: 0 })
       } else {
+        setLoading(false)
         alert(result.message || 'Failed to check in rider')
       }
     } catch (err) {
       console.error('Error checking in rider:', err)
+      setLoading(false)
       alert('Failed to check in rider')
     }
-    
-    setCheckinModal({ isOpen: false, rider: null, batchType: 'morning', batchIndex: 0 })
   }
 
   const toggleBatch = (batchId: string) => {
@@ -1458,13 +1515,14 @@ function AdminDashboard() {
 
       {/* Check-in Confirmation Modal */}
       {checkinModal.isOpen && checkinModal.rider && (
-        <div className="modal-overlay" onClick={() => setCheckinModal({ isOpen: false, rider: null, batchType: 'morning', batchIndex: 0 })}>
+        <div className="modal-overlay" onClick={() => !loading && setCheckinModal({ isOpen: false, rider: null, batchType: 'morning', batchIndex: 0 })}>
           <div className="modal modal--checkin" onClick={(e) => e.stopPropagation()}>
             <div className="modal__header">
               <h2 className="modal__title">✅ Confirm Check-in</h2>
               <button 
                 className="modal__close"
-                onClick={() => setCheckinModal({ isOpen: false, rider: null, batchType: 'morning', batchIndex: 0 })}
+                onClick={() => !loading && setCheckinModal({ isOpen: false, rider: null, batchType: 'morning', batchIndex: 0 })}
+                disabled={loading}
               >
                 ✕
               </button>
@@ -1503,14 +1561,17 @@ function AdminDashboard() {
               <button 
                 className="modal__btn modal__btn--cancel"
                 onClick={() => setCheckinModal({ isOpen: false, rider: null, batchType: 'morning', batchIndex: 0 })}
+                disabled={loading}
               >
                 Cancel
               </button>
               <button 
-                className="modal__btn modal__btn--checkin"
+                className={`modal__btn modal__btn--checkin ${loading ? 'modal__btn--loading' : ''}`}
                 onClick={handleCheckin}
+                disabled={loading}
               >
-                ✓ Confirm Check-in
+                {loading && <span className="btn-spinner"></span>}
+                {loading ? 'Checking in...' : '✓ Confirm Check-in'}
               </button>
             </div>
           </div>
@@ -1519,13 +1580,14 @@ function AdminDashboard() {
 
       {/* Delete Rider Confirmation Modal */}
       {deleteModal.isOpen && deleteModal.rider && (
-        <div className="modal-overlay" onClick={() => setDeleteModal({ isOpen: false, rider: null, batchType: 'morning', batchIndex: 0 })}>
+        <div className="modal-overlay" onClick={() => !loading && setDeleteModal({ isOpen: false, rider: null, batchType: 'morning', batchIndex: 0 })}>
           <div className="modal modal--delete" onClick={(e) => e.stopPropagation()}>
             <div className="modal__header">
               <h2 className="modal__title">⚠️ Remove Rider</h2>
               <button 
                 className="modal__close"
-                onClick={() => setDeleteModal({ isOpen: false, rider: null, batchType: 'morning', batchIndex: 0 })}
+                onClick={() => !loading && setDeleteModal({ isOpen: false, rider: null, batchType: 'morning', batchIndex: 0 })}
+                disabled={loading}
               >
                 ✕
               </button>
@@ -1551,14 +1613,17 @@ function AdminDashboard() {
               <button 
                 className="modal__btn modal__btn--cancel"
                 onClick={() => setDeleteModal({ isOpen: false, rider: null, batchType: 'morning', batchIndex: 0 })}
+                disabled={loading}
               >
                 Cancel
               </button>
               <button 
-                className="modal__btn modal__btn--danger"
+                className={`modal__btn modal__btn--danger ${loading ? 'modal__btn--loading' : ''}`}
                 onClick={handleDeleteRider}
+                disabled={loading}
               >
-                Remove Rider
+                {loading && <span className="btn-spinner"></span>}
+                {loading ? 'Removing...' : 'Remove Rider'}
               </button>
             </div>
           </div>
@@ -1567,13 +1632,14 @@ function AdminDashboard() {
 
       {/* Edit Rider Modal */}
       {editRiderModal.isOpen && editRiderModal.rider && (
-        <div className="modal-overlay" onClick={() => setEditRiderModal({ isOpen: false, rider: null, batchType: 'morning', batchIndex: 0 })}>
+        <div className="modal-overlay" onClick={() => !loading && setEditRiderModal({ isOpen: false, rider: null, batchType: 'morning', batchIndex: 0 })}>
           <div className="modal modal--edit-rider" onClick={(e) => e.stopPropagation()}>
             <div className="modal__header">
               <h2 className="modal__title">✏️ Edit Rider</h2>
               <button 
                 className="modal__close"
-                onClick={() => setEditRiderModal({ isOpen: false, rider: null, batchType: 'morning', batchIndex: 0 })}
+                onClick={() => !loading && setEditRiderModal({ isOpen: false, rider: null, batchType: 'morning', batchIndex: 0 })}
+                disabled={loading}
               >
                 ✕
               </button>
@@ -1656,14 +1722,17 @@ function AdminDashboard() {
               <button 
                 className="modal__btn modal__btn--cancel"
                 onClick={() => setEditRiderModal({ isOpen: false, rider: null, batchType: 'morning', batchIndex: 0 })}
+                disabled={loading}
               >
                 Cancel
               </button>
               <button 
-                className="modal__btn modal__btn--confirm"
+                className={`modal__btn modal__btn--confirm ${loading ? 'modal__btn--loading' : ''}`}
                 onClick={handleSaveEdit}
+                disabled={loading}
               >
-                Save Changes
+                {loading && <span className="btn-spinner"></span>}
+                {loading ? 'Saving...' : 'Save Changes'}
               </button>
             </div>
           </div>
@@ -1672,13 +1741,24 @@ function AdminDashboard() {
 
       {/* Edit Batch Timing Modal */}
       {editBatchModal.isOpen && (
-        <div className="modal-overlay" onClick={() => setEditBatchModal({ isOpen: false, batchType: 'morning', batchIndex: 0, name: '', time: '' })}>
+        <div className="modal-overlay" onClick={() => {
+          if (!loading) {
+            setEditBatchModal({ isOpen: false, batchType: 'morning', batchIndex: 0, name: '', time: '' })
+            setFormErrors(prev => ({ ...prev, editBatch: {} }))
+          }
+        }}>
           <div className="modal modal--edit-batch" onClick={(e) => e.stopPropagation()}>
             <div className="modal__header">
               <h2 className="modal__title">⏰ Edit Batch Timing</h2>
               <button 
                 className="modal__close"
-                onClick={() => setEditBatchModal({ isOpen: false, batchType: 'morning', batchIndex: 0, name: '', time: '' })}
+                onClick={() => {
+                  if (!loading) {
+                    setEditBatchModal({ isOpen: false, batchType: 'morning', batchIndex: 0, name: '', time: '' })
+                    setFormErrors(prev => ({ ...prev, editBatch: {} }))
+                  }
+                }}
+                disabled={loading}
               >
                 ✕
               </button>
@@ -1690,42 +1770,57 @@ function AdminDashboard() {
                 </span>
               </div>
               <form className="edit-batch-form" onSubmit={(e) => { e.preventDefault(); handleSaveBatchTiming(); }}>
-                <div className="form-field">
-                  <label htmlFor="batch-name">Batch Name</label>
+                <div className={`form-field ${formErrors.editBatch.name ? 'form-field--error' : ''}`}>
+                  <label htmlFor="batch-name">Batch Name *</label>
                   <input
                     type="text"
                     id="batch-name"
                     value={editBatchModal.name}
-                    onChange={(e) => setEditBatchModal(prev => ({ ...prev, name: e.target.value }))}
+                    onChange={(e) => {
+                      setEditBatchModal(prev => ({ ...prev, name: e.target.value }))
+                      if (formErrors.editBatch.name) setFormErrors(prev => ({ ...prev, editBatch: { ...prev.editBatch, name: undefined } }))
+                    }}
                     placeholder="e.g., Batch 1"
-                    required
+                    disabled={loading}
                   />
+                  {formErrors.editBatch.name && <span className="form-field__error">{formErrors.editBatch.name}</span>}
                 </div>
-                <div className="form-field">
-                  <label htmlFor="batch-time">Timing</label>
+                <div className={`form-field ${formErrors.editBatch.time ? 'form-field--error' : ''}`}>
+                  <label htmlFor="batch-time">Timing *</label>
                   <input
                     type="text"
                     id="batch-time"
                     value={editBatchModal.time}
-                    onChange={(e) => setEditBatchModal(prev => ({ ...prev, time: e.target.value }))}
+                    onChange={(e) => {
+                      setEditBatchModal(prev => ({ ...prev, time: e.target.value }))
+                      if (formErrors.editBatch.time) setFormErrors(prev => ({ ...prev, editBatch: { ...prev.editBatch, time: undefined } }))
+                    }}
                     placeholder="e.g., 6:00 AM - 7:30 AM"
                     required
+                    disabled={loading}
                   />
+                  {formErrors.editBatch.time && <span className="form-field__error">{formErrors.editBatch.time}</span>}
                 </div>
               </form>
             </div>
             <div className="modal__footer">
               <button 
                 className="modal__btn modal__btn--cancel"
-                onClick={() => setEditBatchModal({ isOpen: false, batchType: 'morning', batchIndex: 0, name: '', time: '' })}
+                onClick={() => {
+                  setEditBatchModal({ isOpen: false, batchType: 'morning', batchIndex: 0, name: '', time: '' })
+                  setFormErrors(prev => ({ ...prev, editBatch: {} }))
+                }}
+                disabled={loading}
               >
                 Cancel
               </button>
               <button 
-                className="modal__btn modal__btn--confirm"
+                className={`modal__btn modal__btn--confirm ${loading ? 'modal__btn--loading' : ''}`}
                 onClick={handleSaveBatchTiming}
+                disabled={loading}
               >
-                Save Timing
+                {loading && <span className="btn-spinner"></span>}
+                {loading ? 'Saving...' : 'Save Timing'}
               </button>
             </div>
           </div>
@@ -1734,13 +1829,14 @@ function AdminDashboard() {
 
       {/* Delete Batch Confirmation Modal */}
       {deleteBatchModal.isOpen && deleteBatchModal.batch && (
-        <div className="modal-overlay" onClick={() => setDeleteBatchModal({ isOpen: false, batch: null, batchType: 'morning' })}>
+        <div className="modal-overlay" onClick={() => !loading && setDeleteBatchModal({ isOpen: false, batch: null, batchType: 'morning' })}>
           <div className="modal modal--delete-batch" onClick={(e) => e.stopPropagation()}>
             <div className="modal__header">
               <h2 className="modal__title">⚠️ Delete Batch</h2>
               <button 
                 className="modal__close"
-                onClick={() => setDeleteBatchModal({ isOpen: false, batch: null, batchType: 'morning' })}
+                onClick={() => !loading && setDeleteBatchModal({ isOpen: false, batch: null, batchType: 'morning' })}
+                disabled={loading}
               >
                 ✕
               </button>
@@ -1768,15 +1864,17 @@ function AdminDashboard() {
               <button 
                 className="modal__btn modal__btn--cancel"
                 onClick={() => setDeleteBatchModal({ isOpen: false, batch: null, batchType: 'morning' })}
+                disabled={loading}
               >
                 Cancel
               </button>
               <button 
-                className="modal__btn modal__btn--danger"
+                className={`modal__btn modal__btn--danger ${loading ? 'modal__btn--loading' : ''}`}
                 onClick={handleDeleteBatch}
-                disabled={deleteBatchModal.batch.riders.length > 0}
+                disabled={deleteBatchModal.batch.riders.length > 0 || loading}
               >
-                Delete Batch
+                {loading && <span className="btn-spinner"></span>}
+                {loading ? 'Deleting...' : 'Delete Batch'}
               </button>
             </div>
           </div>
@@ -1785,13 +1883,24 @@ function AdminDashboard() {
 
       {/* Add New Batch Modal */}
       {addBatchModal.isOpen && (
-        <div className="modal-overlay" onClick={() => setAddBatchModal({ isOpen: false, batchType: 'morning', name: '', time: '' })}>
+        <div className="modal-overlay" onClick={() => {
+          if (!loading) {
+            setAddBatchModal({ isOpen: false, batchType: 'morning', name: '', time: '' })
+            setFormErrors(prev => ({ ...prev, addBatch: {} }))
+          }
+        }}>
           <div className="modal modal--add-batch" onClick={(e) => e.stopPropagation()}>
             <div className="modal__header">
               <h2 className="modal__title">➕ Add New Batch</h2>
               <button 
                 className="modal__close"
-                onClick={() => setAddBatchModal({ isOpen: false, batchType: 'morning', name: '', time: '' })}
+                onClick={() => {
+                  if (!loading) {
+                    setAddBatchModal({ isOpen: false, batchType: 'morning', name: '', time: '' })
+                    setFormErrors(prev => ({ ...prev, addBatch: {} }))
+                  }
+                }}
+                disabled={loading}
               >
                 ✕
               </button>
@@ -1803,42 +1912,56 @@ function AdminDashboard() {
                 </span>
               </div>
               <form className="edit-batch-form" onSubmit={(e) => { e.preventDefault(); handleAddBatch(); }}>
-                <div className="form-field">
+                <div className={`form-field ${formErrors.addBatch.name ? 'form-field--error' : ''}`}>
                   <label htmlFor="new-batch-name">Batch Name *</label>
                   <input
                     type="text"
                     id="new-batch-name"
                     value={addBatchModal.name}
-                    onChange={(e) => setAddBatchModal(prev => ({ ...prev, name: e.target.value }))}
+                    onChange={(e) => {
+                      setAddBatchModal(prev => ({ ...prev, name: e.target.value }))
+                      if (formErrors.addBatch.name) setFormErrors(prev => ({ ...prev, addBatch: { ...prev.addBatch, name: undefined } }))
+                    }}
                     placeholder="e.g., Batch 4, Weekend Special"
-                    required
+                    disabled={loading}
                   />
+                  {formErrors.addBatch.name && <span className="form-field__error">{formErrors.addBatch.name}</span>}
                 </div>
-                <div className="form-field">
+                <div className={`form-field ${formErrors.addBatch.time ? 'form-field--error' : ''}`}>
                   <label htmlFor="new-batch-time">Timing *</label>
                   <input
                     type="text"
                     id="new-batch-time"
                     value={addBatchModal.time}
-                    onChange={(e) => setAddBatchModal(prev => ({ ...prev, time: e.target.value }))}
+                    onChange={(e) => {
+                      setAddBatchModal(prev => ({ ...prev, time: e.target.value }))
+                      if (formErrors.addBatch.time) setFormErrors(prev => ({ ...prev, addBatch: { ...prev.addBatch, time: undefined } }))
+                    }}
                     placeholder="e.g., 10:30 AM - 12:00 PM"
-                    required
+                    disabled={loading}
                   />
+                  {formErrors.addBatch.time && <span className="form-field__error">{formErrors.addBatch.time}</span>}
                 </div>
               </form>
             </div>
             <div className="modal__footer">
               <button 
                 className="modal__btn modal__btn--cancel"
-                onClick={() => setAddBatchModal({ isOpen: false, batchType: 'morning', name: '', time: '' })}
+                onClick={() => {
+                  setAddBatchModal({ isOpen: false, batchType: 'morning', name: '', time: '' })
+                  setFormErrors(prev => ({ ...prev, addBatch: {} }))
+                }}
+                disabled={loading}
               >
                 Cancel
               </button>
               <button 
-                className="modal__btn modal__btn--confirm"
+                className={`modal__btn modal__btn--confirm ${loading ? 'modal__btn--loading' : ''}`}
                 onClick={handleAddBatch}
+                disabled={loading}
               >
-                Add Batch
+                {loading && <span className="btn-spinner"></span>}
+                {loading ? 'Adding...' : 'Add Batch'}
               </button>
             </div>
           </div>
@@ -1847,13 +1970,24 @@ function AdminDashboard() {
 
       {/* Add New Rider Modal */}
       {addRiderModal && (
-        <div className="modal-overlay" onClick={() => setAddRiderModal(false)}>
+        <div className="modal-overlay" onClick={() => {
+          if (!loading) {
+            setAddRiderModal(false)
+            setFormErrors(prev => ({ ...prev, addRider: {} }))
+          }
+        }}>
           <div className="modal modal--add-rider" onClick={(e) => e.stopPropagation()}>
             <div className="modal__header">
               <h2 className="modal__title">Add New Rider</h2>
               <button 
                 className="modal__close"
-                onClick={() => setAddRiderModal(false)}
+                onClick={() => {
+                  if (!loading) {
+                    setAddRiderModal(false)
+                    setFormErrors(prev => ({ ...prev, addRider: {} }))
+                  }
+                }}
+                disabled={loading}
               >
                 ✕
               </button>
@@ -1861,18 +1995,21 @@ function AdminDashboard() {
             <div className="modal__body">
               <form className="add-rider-form" onSubmit={(e) => { e.preventDefault(); handleAddRider(); }}>
                 <div className="form-row">
-                  <div className="form-field">
+                  <div className={`form-field ${formErrors.addRider.name ? 'form-field--error' : ''}`}>
                     <label htmlFor="rider-name">Name *</label>
                     <input
                       type="text"
                       id="rider-name"
                       placeholder="Enter rider's name"
                       value={newRider.name}
-                      onChange={(e) => setNewRider(prev => ({ ...prev, name: e.target.value }))}
-                      required
+                      onChange={(e) => {
+                        setNewRider(prev => ({ ...prev, name: e.target.value }))
+                        if (formErrors.addRider.name) setFormErrors(prev => ({ ...prev, addRider: { ...prev.addRider, name: undefined } }))
+                      }}
                     />
+                    {formErrors.addRider.name && <span className="form-field__error">{formErrors.addRider.name}</span>}
                   </div>
-                  <div className="form-field">
+                  <div className={`form-field ${formErrors.addRider.age ? 'form-field--error' : ''}`}>
                     <label htmlFor="rider-age">Age *</label>
                     <input
                       type="number"
@@ -1881,23 +2018,29 @@ function AdminDashboard() {
                       min="5"
                       max="80"
                       value={newRider.age}
-                      onChange={(e) => setNewRider(prev => ({ ...prev, age: e.target.value }))}
-                      required
+                      onChange={(e) => {
+                        setNewRider(prev => ({ ...prev, age: e.target.value }))
+                        if (formErrors.addRider.age) setFormErrors(prev => ({ ...prev, addRider: { ...prev.addRider, age: undefined } }))
+                      }}
                     />
+                    {formErrors.addRider.age && <span className="form-field__error">{formErrors.addRider.age}</span>}
                   </div>
                 </div>
 
                 <div className="form-row">
-                  <div className="form-field">
+                  <div className={`form-field ${formErrors.addRider.phone ? 'form-field--error' : ''}`}>
                     <label htmlFor="rider-phone">Phone *</label>
                     <input
                       type="tel"
                       id="rider-phone"
                       placeholder="+91 98765 43210"
                       value={newRider.phone}
-                      onChange={(e) => setNewRider(prev => ({ ...prev, phone: e.target.value }))}
-                      required
+                      onChange={(e) => {
+                        setNewRider(prev => ({ ...prev, phone: e.target.value }))
+                        if (formErrors.addRider.phone) setFormErrors(prev => ({ ...prev, addRider: { ...prev.addRider, phone: undefined } }))
+                      }}
                     />
+                    {formErrors.addRider.phone && <span className="form-field__error">{formErrors.addRider.phone}</span>}
                   </div>
                   <div className="form-field">
                     <label htmlFor="rider-email">Email</label>
@@ -1992,15 +2135,21 @@ function AdminDashboard() {
             <div className="modal__footer">
               <button 
                 className="modal__btn modal__btn--cancel"
-                onClick={() => setAddRiderModal(false)}
+                onClick={() => {
+                  setAddRiderModal(false)
+                  setFormErrors(prev => ({ ...prev, addRider: {} }))
+                }}
+                disabled={loading}
               >
                 Cancel
               </button>
               <button 
-                className="modal__btn modal__btn--confirm"
+                className={`modal__btn modal__btn--confirm ${loading ? 'modal__btn--loading' : ''}`}
                 onClick={handleAddRider}
+                disabled={loading}
               >
-                Add Rider
+                {loading && <span className="btn-spinner"></span>}
+                {loading ? 'Adding...' : 'Add Rider'}
               </button>
             </div>
           </div>
@@ -2169,13 +2318,14 @@ function AdminDashboard() {
 
       {/* Payment Confirmation Modal */}
       {paymentModal.isOpen && paymentModal.rider && (
-        <div className="modal-overlay" onClick={() => setPaymentModal({ isOpen: false, rider: null, batchType: 'morning', batchIndex: 0 })}>
+        <div className="modal-overlay" onClick={() => !loading && setPaymentModal({ isOpen: false, rider: null, batchType: 'morning', batchIndex: 0 })}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal__header">
               <h2 className="modal__title">💰 Confirm Payment</h2>
               <button 
                 className="modal__close"
-                onClick={() => setPaymentModal({ isOpen: false, rider: null, batchType: 'morning', batchIndex: 0 })}
+                onClick={() => !loading && setPaymentModal({ isOpen: false, rider: null, batchType: 'morning', batchIndex: 0 })}
+                disabled={loading}
               >
                 ✕
               </button>
@@ -2209,14 +2359,17 @@ function AdminDashboard() {
               <button 
                 className="modal__btn modal__btn--cancel"
                 onClick={() => setPaymentModal({ isOpen: false, rider: null, batchType: 'morning', batchIndex: 0 })}
+                disabled={loading}
               >
                 Cancel
               </button>
               <button 
-                className="modal__btn modal__btn--confirm"
+                className={`modal__btn modal__btn--confirm ${loading ? 'modal__btn--loading' : ''}`}
                 onClick={handlePayment}
+                disabled={loading}
               >
-                Mark as Paid
+                {loading && <span className="btn-spinner"></span>}
+                {loading ? 'Processing...' : 'Mark as Paid'}
               </button>
             </div>
           </div>
@@ -2272,7 +2425,7 @@ function AdminDashboard() {
       {/* Sidebar */}
       <aside className="admin__sidebar">
         <div className="admin__logo">
-          <span className="admin__logo-icon">🐴</span>
+          <img src="/logo.png" alt="Equine Enclave" className="admin__logo-img" />
           <span className="admin__logo-text">Equine Enclave</span>
         </div>
         

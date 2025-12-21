@@ -168,6 +168,13 @@
   font-size: 2rem;
 }
 
+.admin__logo-img {
+  width: 45px;
+  height: 45px;
+  object-fit: contain;
+  border-radius: 8px;
+}
+
 .admin__logo-text {
   font-family: var(--font-display);
   font-size: 1.35rem;
@@ -2612,9 +2619,43 @@
   color: white;
 }
 
-.modal__btn--checkin:hover {
+.modal__btn--checkin:hover:not(:disabled) {
   transform: translateY(-2px);
   box-shadow: 0 5px 15px rgba(46, 204, 113, 0.3);
+}
+
+/* Button Loading State */
+.modal__btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+.modal__btn--loading {
+  position: relative;
+  pointer-events: none;
+}
+
+.btn-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: btnSpin 0.8s linear infinite;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+
+.modal__btn--cancel .btn-spinner {
+  border: 2px solid rgba(0, 0, 0, 0.2);
+  border-top-color: var(--text-primary);
+}
+
+@keyframes btnSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 /* Check-in Modal */
@@ -2983,6 +3024,44 @@
 .form-field select option {
   background: #1a1a2e;
   color: #f0f0f0;
+}
+
+/* Form Field Error State */
+.form-field--error input,
+.form-field--error select {
+  border-color: #e74c3c;
+  background: rgba(231, 76, 60, 0.05);
+}
+
+.form-field--error input:focus,
+.form-field--error select:focus {
+  border-color: #e74c3c;
+  box-shadow: 0 0 0 3px rgba(231, 76, 60, 0.15);
+}
+
+.form-field__error {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+  color: #e74c3c;
+  margin-top: 0.25rem;
+}
+
+.form-field__error::before {
+  content: '⚠';
+  font-size: 0.75rem;
+}
+
+/* Edit Batch Form Error State */
+.edit-batch-form .form-field--error input {
+  border-color: #e74c3c;
+  background: rgba(231, 76, 60, 0.05);
+}
+
+.edit-batch-form .form-field--error input:focus {
+  border-color: #e74c3c;
+  box-shadow: 0 0 0 3px rgba(231, 76, 60, 0.15);
 }
 
 /* Batch Selection Grid */
