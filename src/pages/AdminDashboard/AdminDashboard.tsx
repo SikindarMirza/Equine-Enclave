@@ -585,7 +585,7 @@ function AdminDashboard() {
       new Date(b.checkinTime).getTime() - new Date(a.checkinTime).getTime()
     )
     
-    sortedCheckins.forEach((checkin, index) => {
+    sortedCheckins.forEach((checkin) => {
       // Check if we need a new page
       if (y > 270) {
         doc.addPage()
@@ -1404,7 +1404,13 @@ function AdminDashboard() {
                 <div className="batch-card__header" onClick={() => toggleBatch(batchId)}>
                   <div className="batch-card__info">
                     <h3 className="batch-card__name">{batch.name}</h3>
-                    <span className="batch-card__time">⏰ {batch.time}</span>
+                    <span className="batch-card__time">
+                      <svg className="clock-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <polyline points="12 6 12 12 16 14"></polyline>
+                      </svg>
+                      {batch.time}
+                    </span>
                   </div>
                   <div className="batch-card__meta">
                     <button 
@@ -1548,7 +1554,13 @@ function AdminDashboard() {
                 <div className="batch-card__header" onClick={() => toggleBatch(batchId)}>
                   <div className="batch-card__info">
                     <h3 className="batch-card__name">{batch.name}</h3>
-                    <span className="batch-card__time">⏰ {batch.time}</span>
+                    <span className="batch-card__time">
+                      <svg className="clock-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <polyline points="12 6 12 12 16 14"></polyline>
+                      </svg>
+                      {batch.time}
+                    </span>
                   </div>
                   <div className="batch-card__meta">
                     <button 
@@ -1966,7 +1978,13 @@ function AdminDashboard() {
         }}>
           <div className="modal modal--edit-batch" onClick={(e) => e.stopPropagation()}>
             <div className="modal__header">
-              <h2 className="modal__title">⏰ Edit Batch Timing</h2>
+              <h2 className="modal__title">
+                <svg className="modal__title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+                Edit Batch Timing
+              </h2>
               <button 
                 className="modal__close"
                 onClick={() => {
