@@ -4399,10 +4399,7 @@ body.modal-open {
   .modal {
     width: 100%;
     max-width: 100%;
-    max-height: 85vh;
-    min-height: 90vh;
-    margin-top: 10%;
-    margin-bottom: 10%;
+    max-height: 90vh;
     border-radius: 20px 20px 0 0;
     animation: slideUp 0.3s ease;
     display: flex;
