@@ -620,6 +620,7 @@ function AdminDashboard() {
     { id: 6, name: 'XLove', breed: 'Thoroughbred', age: 9, color: 'Dark Bay', stall: 'B-03', status: 'healthy', lastCheckup: '2025-11-30', notes: 'Experienced jumper, calm temperament' },
     { id: 7, name: 'Baadshah', breed: 'Marwari', age: 10, color: 'Black', stall: 'C-01', status: 'treatment', lastCheckup: '2025-12-09', notes: 'Recovering from cold, on medication' },
     { id: 8, name: 'Antilope', breed: 'Thoroughbred', age: 6, color: 'Grey', stall: 'C-02', status: 'healthy', lastCheckup: '2025-12-02', notes: 'Dressage specialist, very graceful' },
+    { id: 9, name: 'Virat', breed: 'Marwari', age: 7, color: 'Bay', stall: 'A-01', status: 'healthy', lastCheckup: '2025-12-01', notes: 'Excellent condition, very energetic' },
   ]
 
   const [morningBatches, setMorningBatches] = useState<Batch[]>([])
