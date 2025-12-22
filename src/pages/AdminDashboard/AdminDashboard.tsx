@@ -272,6 +272,34 @@ function AdminDashboard() {
     checkAuth()
   }, [navigate])
 
+  // Lock body scroll when any modal is open
+  useEffect(() => {
+    const isAnyModalOpen = 
+      paymentModal.isOpen || 
+      addRiderModal || 
+      checkinModal.isOpen || 
+      deleteModal.isOpen || 
+      editRiderModal.isOpen || 
+      assignBatchModal.isOpen || 
+      editBatchModal.isOpen || 
+      addBatchModal.isOpen || 
+      deleteBatchModal.isOpen
+
+    if (isAnyModalOpen) {
+      // Save scroll position and lock body
+      const scrollY = window.scrollY
+      document.documentElement.style.setProperty('--scroll-y', `${scrollY}px`)
+      document.body.classList.add('modal-open')
+    } else {
+      // Restore scroll position
+      document.body.classList.remove('modal-open')
+      const scrollY = document.documentElement.style.getPropertyValue('--scroll-y')
+      if (scrollY) {
+        window.scrollTo(0, parseInt(scrollY || '0'))
+      }
+    }
+  }, [paymentModal.isOpen, addRiderModal, checkinModal.isOpen, deleteModal.isOpen, editRiderModal.isOpen, assignBatchModal.isOpen, editBatchModal.isOpen, addBatchModal.isOpen, deleteBatchModal.isOpen])
+
   // Logout handler
   const handleLogout = () => {
     localStorage.removeItem('admin-token')

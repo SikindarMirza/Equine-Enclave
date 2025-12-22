@@ -1,4 +1,16 @@
 /* ===========================
+   Body Scroll Lock for Modals
+   =========================== */
+body.modal-open {
+  position: fixed;
+  top: calc(var(--scroll-y, 0) * -1);
+  left: 0;
+  right: 0;
+  overflow: hidden;
+  width: 100%;
+}
+
+/* ===========================
    Theme Variables
    =========================== */
 
@@ -2604,6 +2616,8 @@
   justify-content: center;
   z-index: 1000;
   animation: fadeIn 0.2s ease;
+  /* overflow: hidden; */
+  /* overscroll-behavior: contain; */
 }
 
 @keyframes fadeIn {
@@ -4386,7 +4400,9 @@
     width: 100%;
     max-width: 100%;
     max-height: 85vh;
-    min-height: 100vh;
+    min-height: 90vh;
+    margin-top: 10%;
+    margin-bottom: 10%;
     border-radius: 20px 20px 0 0;
     animation: slideUp 0.3s ease;
     display: flex;
