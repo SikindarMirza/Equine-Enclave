@@ -3266,6 +3266,11 @@
 /* Check-in Modal */
 .modal--checkin {
   max-width: 420px;
+  overflow: visible;
+}
+
+.modal--checkin .modal__body {
+  overflow: visible;
 }
 
 .checkin-info {
