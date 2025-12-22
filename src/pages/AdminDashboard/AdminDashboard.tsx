@@ -9,6 +9,8 @@ import PeopleIcon from '@mui/icons-material/People'
 import BarChartIcon from '@mui/icons-material/BarChart'
 import SettingsIcon from '@mui/icons-material/Settings'
 import EditIcon from '@mui/icons-material/Edit'
+import WbSunnyIcon from '@mui/icons-material/WbSunny'
+import NightsStayIcon from '@mui/icons-material/NightsStay'
 import './AdminDashboard.css'
 
 // Horse Icon Image Component
@@ -163,6 +165,9 @@ function AdminDashboard() {
     selectedHorse: string;
   }>({ isOpen: false, rider: null, batchType: 'morning', batchIndex: 0, selectedHorse: '' })
   const [horseDropdownOpen, setHorseDropdownOpen] = useState(false)
+  const [levelDropdownOpen, setLevelDropdownOpen] = useState(false)
+  const [editLevelDropdownOpen, setEditLevelDropdownOpen] = useState(false)
+  const [reportsHorseDropdownOpen, setReportsHorseDropdownOpen] = useState(false)
   
   const [deleteModal, setDeleteModal] = useState<{
     isOpen: boolean;
@@ -672,7 +677,7 @@ function AdminDashboard() {
     
     doc.setFontSize(14)
     doc.setFont('helvetica', 'normal')
-    doc.text('Unpaid Classes Report', pageWidth / 2, 30, { align: 'center' })
+    doc.text('Classes Check-in Report', pageWidth / 2, 30, { align: 'center' })
     
     // Horizontal line
     doc.setLineWidth(0.5)
@@ -1493,7 +1498,7 @@ function AdminDashboard() {
                     <td>{rider.age} yrs</td>
                     <td>
                       <span className="batch-tag">
-                        {batchType === 'morning' ? '🌅' : '🌆'} {batchType.charAt(0).toUpperCase() + batchType.slice(1)} - {batchName}
+                        {batchType === 'morning' ? <WbSunnyIcon style={{ fontSize: 14, color: '#f39c12', marginRight: 4 }} /> : <NightsStayIcon style={{ fontSize: 14, color: '#9b59b6', marginRight: 4 }} />} {batchType.charAt(0).toUpperCase() + batchType.slice(1)} - {batchName}
                       </span>
                     </td>
                     <td>
@@ -1542,7 +1547,7 @@ function AdminDashboard() {
       {/* Morning Batches */}
       <div className="batch-section">
         <div className="batch-section__header">
-          <span className="batch-section__icon">🌅</span>
+          <span className="batch-section__icon batch-section__icon--morning"><WbSunnyIcon /></span>
           <h2 className="batch-section__title">Morning Batches</h2>
           <span className="batch-section__count">{morningBatches.length} batches</span>
           <button 
@@ -1692,7 +1697,7 @@ function AdminDashboard() {
       {/* Evening Batches */}
       <div className="batch-section">
         <div className="batch-section__header">
-          <span className="batch-section__icon">🌆</span>
+          <span className="batch-section__icon batch-section__icon--evening"><NightsStayIcon /></span>
           <h2 className="batch-section__title">Evening Batches</h2>
           <span className="batch-section__count">{eveningBatches.length} batches</span>
           <button 
@@ -1876,7 +1881,7 @@ function AdminDashboard() {
                 <div className="modal__rider-details">
                   <h3 className="modal__rider-name">{checkinModal.rider.name}</h3>
                   <p className="modal__rider-meta">
-                    {checkinModal.rider.level} • {checkinModal.batchType === 'morning' ? '🌅 Morning' : '🌆 Evening'} {
+                    {checkinModal.rider.level} • {checkinModal.batchType === 'morning' ? <><WbSunnyIcon style={{ fontSize: 14, color: '#f39c12', verticalAlign: 'middle', marginRight: 2 }} /> Morning</> : <><NightsStayIcon style={{ fontSize: 14, color: '#9b59b6', verticalAlign: 'middle', marginRight: 2 }} /> Evening</>} {
                       checkinModal.batchType === 'morning' 
                         ? morningBatches[checkinModal.batchIndex]?.name 
                         : eveningBatches[checkinModal.batchIndex]?.name
@@ -1984,7 +1989,7 @@ function AdminDashboard() {
                 <div className="modal__rider-details">
                   <h3 className="modal__rider-name">{deleteModal.rider.name}</h3>
                   <p className="modal__rider-meta">
-                    {deleteModal.batchType === 'morning' ? '🌅 Morning' : '🌆 Evening'} - {
+                    {deleteModal.batchType === 'morning' ? <><WbSunnyIcon style={{ fontSize: 14, color: '#f39c12', verticalAlign: 'middle', marginRight: 2 }} /> Morning</> : <><NightsStayIcon style={{ fontSize: 14, color: '#9b59b6', verticalAlign: 'middle', marginRight: 2 }} /> Evening</>} - {
                       deleteModal.batchType === 'morning' 
                         ? morningBatches[deleteModal.batchIndex]?.name 
                         : eveningBatches[deleteModal.batchIndex]?.name
@@ -2019,13 +2024,13 @@ function AdminDashboard() {
 
       {/* Edit Rider Modal */}
       {editRiderModal.isOpen && editRiderModal.rider && (
-        <div className="modal-overlay" onClick={() => !loading && setEditRiderModal({ isOpen: false, rider: null, batchType: 'morning', batchIndex: 0 })}>
+        <div className="modal-overlay" onClick={() => { if (!loading) { setEditRiderModal({ isOpen: false, rider: null, batchType: 'morning', batchIndex: 0 }); setEditLevelDropdownOpen(false); }}}>
           <div className="modal modal--edit-rider" onClick={(e) => e.stopPropagation()}>
             <div className="modal__header">
               <h2 className="modal__title">Edit Rider</h2>
               <button 
                 className="modal__close"
-                onClick={() => !loading && setEditRiderModal({ isOpen: false, rider: null, batchType: 'morning', batchIndex: 0 })}
+                onClick={() => { if (!loading) { setEditRiderModal({ isOpen: false, rider: null, batchType: 'morning', batchIndex: 0 }); setEditLevelDropdownOpen(false); }}}
                 disabled={loading}
               >
                 ✕
@@ -2081,16 +2086,41 @@ function AdminDashboard() {
                 </div>
 
                 <div className="form-field">
-                  <label htmlFor="edit-rider-level">Skill Level</label>
-                  <select
-                    id="edit-rider-level"
-                    value={editRiderData.level}
-                    onChange={(e) => setEditRiderData(prev => ({ ...prev, level: e.target.value as 'beginner' | 'intermediate' | 'advanced' }))}
-                  >
-                    <option value="beginner">Beginner</option>
-                    <option value="intermediate">Intermediate</option>
-                    <option value="advanced">Advanced</option>
-                  </select>
+                  <label>Skill Level</label>
+                  <div className="level-dropdown">
+                    <div 
+                      className={`level-dropdown__trigger ${editLevelDropdownOpen ? 'level-dropdown__trigger--open' : ''}`}
+                      onClick={() => setEditLevelDropdownOpen(!editLevelDropdownOpen)}
+                    >
+                      <span className="level-dropdown__value">
+                        {editRiderData.level.charAt(0).toUpperCase() + editRiderData.level.slice(1)}
+                      </span>
+                      <span className="level-dropdown__arrow">▼</span>
+                    </div>
+                    {editLevelDropdownOpen && (
+                      <>
+                        <div 
+                          className="level-dropdown__overlay" 
+                          onClick={() => setEditLevelDropdownOpen(false)}
+                        />
+                        <div className="level-dropdown__menu">
+                          {(['beginner', 'intermediate', 'advanced'] as const).map(level => (
+                            <div
+                              key={level}
+                              className={`level-dropdown__item ${editRiderData.level === level ? 'level-dropdown__item--selected' : ''}`}
+                              onClick={() => {
+                                setEditRiderData(prev => ({ ...prev, level }))
+                                setEditLevelDropdownOpen(false)
+                              }}
+                            >
+                              <span className="level-dropdown__item-name">{level.charAt(0).toUpperCase() + level.slice(1)}</span>
+                              {editRiderData.level === level && <span className="level-dropdown__check">✓</span>}
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </div>
                 </div>
 
                 <div className="form-field form-field--readonly">
@@ -2159,7 +2189,7 @@ function AdminDashboard() {
             <div className="modal__body">
               <div className="edit-batch-info">
                 <span className="edit-batch-type">
-                  {editBatchModal.batchType === 'morning' ? '🌅 Morning' : '🌆 Evening'}
+                  {editBatchModal.batchType === 'morning' ? <><WbSunnyIcon style={{ fontSize: 18, color: '#f39c12', verticalAlign: 'middle', marginRight: 4 }} /> Morning</> : <><NightsStayIcon style={{ fontSize: 18, color: '#9b59b6', verticalAlign: 'middle', marginRight: 4 }} /> Evening</>}
                 </span>
               </div>
               <form className="edit-batch-form" onSubmit={(e) => { e.preventDefault(); handleSaveBatchTiming(); }}>
@@ -2237,7 +2267,7 @@ function AdminDashboard() {
             <div className="modal__body">
               <div className="delete-batch-info">
                 <span className="delete-batch-type">
-                  {deleteBatchModal.batchType === 'morning' ? '🌅 Morning' : '🌆 Evening'}
+                  {deleteBatchModal.batchType === 'morning' ? <><WbSunnyIcon style={{ fontSize: 18, color: '#f39c12', verticalAlign: 'middle', marginRight: 4 }} /> Morning</> : <><NightsStayIcon style={{ fontSize: 18, color: '#9b59b6', verticalAlign: 'middle', marginRight: 4 }} /> Evening</>}
                 </span>
                 <h3 className="delete-batch-name">{deleteBatchModal.batch.name}</h3>
                 <p className="delete-batch-time">{deleteBatchModal.batch.time}</p>
@@ -2301,7 +2331,7 @@ function AdminDashboard() {
             <div className="modal__body">
               <div className="edit-batch-info">
                 <span className="edit-batch-type">
-                  {addBatchModal.batchType === 'morning' ? '🌅 Morning' : '🌆 Evening'}
+                  {addBatchModal.batchType === 'morning' ? <><WbSunnyIcon style={{ fontSize: 18, color: '#f39c12', verticalAlign: 'middle', marginRight: 4 }} /> Morning</> : <><NightsStayIcon style={{ fontSize: 18, color: '#9b59b6', verticalAlign: 'middle', marginRight: 4 }} /> Evening</>}
                 </span>
               </div>
               <form className="edit-batch-form" onSubmit={(e) => { e.preventDefault(); handleAddBatch(); }}>
@@ -2366,6 +2396,7 @@ function AdminDashboard() {
         <div className="modal-overlay" onClick={() => {
           if (!loading) {
             setAddRiderModal(false)
+            setLevelDropdownOpen(false)
             setFormErrors(prev => ({ ...prev, addRider: {} }))
           }
         }}>
@@ -2448,23 +2479,48 @@ function AdminDashboard() {
                 </div>
 
                 <div className="form-field">
-                  <label htmlFor="rider-level">Skill Level</label>
-                  <select
-                    id="rider-level"
-                    value={newRider.level}
-                    onChange={(e) => setNewRider(prev => ({ ...prev, level: e.target.value as 'beginner' | 'intermediate' | 'advanced' }))}
-                  >
-                    <option value="beginner">Beginner</option>
-                    <option value="intermediate">Intermediate</option>
-                    <option value="advanced">Advanced</option>
-                  </select>
+                  <label>Skill Level</label>
+                  <div className="level-dropdown">
+                    <div 
+                      className={`level-dropdown__trigger ${levelDropdownOpen ? 'level-dropdown__trigger--open' : ''}`}
+                      onClick={() => setLevelDropdownOpen(!levelDropdownOpen)}
+                    >
+                      <span className="level-dropdown__value">
+                        {newRider.level.charAt(0).toUpperCase() + newRider.level.slice(1)}
+                      </span>
+                      <span className="level-dropdown__arrow">▼</span>
+                    </div>
+                    {levelDropdownOpen && (
+                      <>
+                        <div 
+                          className="level-dropdown__overlay" 
+                          onClick={() => setLevelDropdownOpen(false)}
+                        />
+                        <div className="level-dropdown__menu">
+                          {(['beginner', 'intermediate', 'advanced'] as const).map(level => (
+                            <div
+                              key={level}
+                              className={`level-dropdown__item ${newRider.level === level ? 'level-dropdown__item--selected' : ''}`}
+                              onClick={() => {
+                                setNewRider(prev => ({ ...prev, level }))
+                                setLevelDropdownOpen(false)
+                              }}
+                            >
+                              <span className="level-dropdown__item-name">{level.charAt(0).toUpperCase() + level.slice(1)}</span>
+                              {newRider.level === level && <span className="level-dropdown__check">✓</span>}
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </div>
                 </div>
 
                 <div className="form-field">
                   <label>Assign to Batch *</label>
                   <div className="batch-select-grid">
                     <div className="batch-select-group">
-                      <span className="batch-select-label">🌅 Morning</span>
+                      <span className="batch-select-label"><WbSunnyIcon style={{ fontSize: 16, color: '#f39c12', verticalAlign: 'middle', marginRight: 4 }} /> Morning</span>
                       {morningBatches.filter(b => b != null).map((batch, idx) => {
                         const isFull = isBatchFull(batch)
                         return (
@@ -2493,7 +2549,7 @@ function AdminDashboard() {
                       })}
                     </div>
                     <div className="batch-select-group">
-                      <span className="batch-select-label">🌆 Evening</span>
+                      <span className="batch-select-label"><NightsStayIcon style={{ fontSize: 16, color: '#9b59b6', verticalAlign: 'middle', marginRight: 4 }} /> Evening</span>
                       {eveningBatches.filter(b => b != null).map((batch, idx) => {
                         const isFull = isBatchFull(batch)
                         return (
@@ -2581,7 +2637,7 @@ function AdminDashboard() {
                     <div className="move-confirmation__from">
                       <span className="move-confirmation__label">From</span>
                       <span className="move-confirmation__batch">
-                        {assignBatchModal.sourceBatchType === 'morning' ? '🌅' : '🌆'} {
+                        {assignBatchModal.sourceBatchType === 'morning' ? <WbSunnyIcon style={{ fontSize: 14, color: '#f39c12', verticalAlign: 'middle', marginRight: 4 }} /> : <NightsStayIcon style={{ fontSize: 14, color: '#9b59b6', verticalAlign: 'middle', marginRight: 4 }} />} {
                           assignBatchModal.sourceBatchType === 'morning' 
                             ? morningBatches[assignBatchModal.sourceBatchIndex]?.name 
                             : eveningBatches[assignBatchModal.sourceBatchIndex]?.name
@@ -2592,7 +2648,7 @@ function AdminDashboard() {
                     <div className="move-confirmation__to">
                       <span className="move-confirmation__label">To</span>
                       <span className="move-confirmation__batch">
-                        {assignBatchModal.targetBatchType === 'morning' ? '🌅' : '🌆'} {
+                        {assignBatchModal.targetBatchType === 'morning' ? <WbSunnyIcon style={{ fontSize: 14, color: '#f39c12', verticalAlign: 'middle', marginRight: 4 }} /> : <NightsStayIcon style={{ fontSize: 14, color: '#9b59b6', verticalAlign: 'middle', marginRight: 4 }} />} {
                           assignBatchModal.targetBatchType === 'morning' 
                             ? morningBatches[assignBatchModal.targetBatchIndex]?.name 
                             : eveningBatches[assignBatchModal.targetBatchIndex]?.name
@@ -2611,7 +2667,7 @@ function AdminDashboard() {
                     <div className="modal__rider-details">
                       <h3 className="modal__rider-name">{assignBatchModal.rider.name}</h3>
                       <p className="modal__rider-meta">
-                        Currently in: {assignBatchModal.sourceBatchType === 'morning' ? '🌅 Morning' : '🌆 Evening'} - {
+                        Currently in: {assignBatchModal.sourceBatchType === 'morning' ? <><WbSunnyIcon style={{ fontSize: 14, color: '#f39c12', verticalAlign: 'middle', marginRight: 2 }} /> Morning</> : <><NightsStayIcon style={{ fontSize: 14, color: '#9b59b6', verticalAlign: 'middle', marginRight: 2 }} /> Evening</>} - {
                           assignBatchModal.sourceBatchType === 'morning' 
                             ? morningBatches[assignBatchModal.sourceBatchIndex]?.name 
                             : eveningBatches[assignBatchModal.sourceBatchIndex]?.name
@@ -2624,7 +2680,7 @@ function AdminDashboard() {
                     <h4 className="batch-selection__title">Select Target Batch</h4>
                     
                     <div className="batch-selection__group">
-                      <h5 className="batch-selection__group-title">🌅 Morning Batches</h5>
+                      <h5 className="batch-selection__group-title"><WbSunnyIcon style={{ fontSize: 18, color: '#f39c12', marginRight: 6 }} /> Morning Batches</h5>
                       <div className="batch-selection__options">
                         {morningBatches.filter(b => b != null).map((batch, idx) => {
                           const isCurrent = assignBatchModal.sourceBatchType === 'morning' && assignBatchModal.sourceBatchIndex === idx
@@ -2650,7 +2706,7 @@ function AdminDashboard() {
                     </div>
                     
                     <div className="batch-selection__group">
-                      <h5 className="batch-selection__group-title">🌆 Evening Batches</h5>
+                      <h5 className="batch-selection__group-title"><NightsStayIcon style={{ fontSize: 18, color: '#9b59b6', marginRight: 6 }} /> Evening Batches</h5>
                       <div className="batch-selection__options">
                         {eveningBatches.filter(b => b != null).map((batch, idx) => {
                           const isCurrent = assignBatchModal.sourceBatchType === 'evening' && assignBatchModal.sourceBatchIndex === idx
@@ -2829,16 +2885,50 @@ function AdminDashboard() {
           {/* Horse Selection */}
           <div className="reports-filter">
             <label className="reports-filter__label">Select Horse:</label>
-            <select 
-              className="reports-filter__select"
-              value={selectedReportHorse}
-              onChange={(e) => setSelectedReportHorse(e.target.value)}
-            >
-              <option value="">-- All Horses --</option>
-              {horses.map(horse => (
-                <option key={horse.id} value={horse.name}>{horse.name}</option>
-              ))}
-            </select>
+            <div className="reports-horse-dropdown">
+              <div 
+                className={`reports-horse-dropdown__trigger ${reportsHorseDropdownOpen ? 'reports-horse-dropdown__trigger--open' : ''}`}
+                onClick={() => setReportsHorseDropdownOpen(!reportsHorseDropdownOpen)}
+              >
+                <span className={`reports-horse-dropdown__value ${!selectedReportHorse ? 'reports-horse-dropdown__value--placeholder' : ''}`}>
+                  {selectedReportHorse || '-- All Horses --'}
+                </span>
+                <span className="reports-horse-dropdown__arrow">▼</span>
+              </div>
+              {reportsHorseDropdownOpen && (
+                <>
+                  <div 
+                    className="reports-horse-dropdown__overlay" 
+                    onClick={() => setReportsHorseDropdownOpen(false)}
+                  />
+                  <div className="reports-horse-dropdown__menu">
+                    <div
+                      className={`reports-horse-dropdown__item ${!selectedReportHorse ? 'reports-horse-dropdown__item--selected' : ''}`}
+                      onClick={() => {
+                        setSelectedReportHorse('')
+                        setReportsHorseDropdownOpen(false)
+                      }}
+                    >
+                      <span className="reports-horse-dropdown__item-name">All Horses</span>
+                      {!selectedReportHorse && <span className="reports-horse-dropdown__check">✓</span>}
+                    </div>
+                    {horses.map(horse => (
+                      <div
+                        key={horse.id}
+                        className={`reports-horse-dropdown__item ${selectedReportHorse === horse.name ? 'reports-horse-dropdown__item--selected' : ''}`}
+                        onClick={() => {
+                          setSelectedReportHorse(horse.name)
+                          setReportsHorseDropdownOpen(false)
+                        }}
+                      >
+                        <span className="reports-horse-dropdown__item-name">{horse.name}</span>
+                        {selectedReportHorse === horse.name && <span className="reports-horse-dropdown__check">✓</span>}
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
             <button 
               className="reports-filter__refresh"
               onClick={fetchRides}
