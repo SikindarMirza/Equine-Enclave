@@ -759,6 +759,111 @@
   font-weight: 600;
 }
 
+/* Gender Dropdown */
+.gender-dropdown {
+  position: relative;
+  width: 100%;
+}
+
+.gender-dropdown__trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.gender-dropdown__trigger:hover {
+  border-color: rgba(212, 175, 55, 0.4);
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.gender-dropdown__trigger--open {
+  border-color: var(--accent-primary);
+  background: rgba(212, 175, 55, 0.1);
+  box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.1);
+}
+
+.gender-dropdown__value {
+  font-size: 0.95rem;
+  color: var(--text-primary);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.gender-dropdown__arrow {
+  font-size: 0.65rem;
+  color: #8892b0;
+  transition: transform 0.2s ease;
+}
+
+.gender-dropdown__trigger--open .gender-dropdown__arrow {
+  transform: rotate(180deg);
+  color: var(--accent-primary);
+}
+
+.gender-dropdown__overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 199;
+}
+
+.gender-dropdown__menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  max-height: 150px;
+  overflow-y: auto;
+  background: linear-gradient(135deg, #1e2444 0%, #252c4a 100%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+  z-index: 200;
+  animation: dropdownFadeIn 0.2s ease;
+}
+
+.gender-dropdown__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.85rem 1rem;
+  cursor: pointer;
+  transition: background 0.2s ease;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.gender-dropdown__item:last-child {
+  border-bottom: none;
+}
+
+.gender-dropdown__item:hover {
+  background: rgba(212, 175, 55, 0.1);
+}
+
+.gender-dropdown__item--selected {
+  background: rgba(212, 175, 55, 0.15);
+}
+
+.gender-dropdown__item-name {
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.gender-dropdown__item--selected .gender-dropdown__item-name {
+  color: var(--accent-primary);
+}
+
+.gender-dropdown__check {
+  color: var(--accent-primary);
+  font-size: 1rem;
+  font-weight: 600;
+}
+
 /* Reports Horse Dropdown */
 .reports-horse-dropdown {
   position: relative;
@@ -3866,6 +3971,36 @@
 }
 
 .admin.theme-light .level-dropdown__item--selected {
+  background: rgba(139, 105, 20, 0.12);
+}
+
+/* Light theme - Gender Dropdown */
+.admin.theme-light .gender-dropdown__trigger {
+  background: #ffffff;
+  border-color: #d4cfc5;
+}
+
+.admin.theme-light .gender-dropdown__trigger:hover {
+  background: #faf8f5;
+  border-color: var(--accent-primary);
+}
+
+.admin.theme-light .gender-dropdown__trigger--open {
+  background: rgba(139, 105, 20, 0.05);
+  border-color: var(--accent-primary);
+}
+
+.admin.theme-light .gender-dropdown__menu {
+  background: #ffffff;
+  border-color: #d4cfc5;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+}
+
+.admin.theme-light .gender-dropdown__item:hover {
+  background: rgba(139, 105, 20, 0.08);
+}
+
+.admin.theme-light .gender-dropdown__item--selected {
   background: rgba(139, 105, 20, 0.12);
 }
 

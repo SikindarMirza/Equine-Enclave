@@ -53,6 +53,11 @@ const riderSchema = new mongoose.Schema({
     enum: ['beginner', 'intermediate', 'advanced'],
     default: 'beginner'
   },
+  gender: {
+    type: String,
+    enum: ['male', 'female'],
+    default: 'male'
+  },
   joinedDate: {
     type: String,
     default: () => new Date().toISOString().split('T')[0]

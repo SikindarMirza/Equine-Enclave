@@ -96,6 +96,7 @@ interface Rider {
   checkins: CheckinRecord[]
   activeClassesCount: number
   level: 'beginner' | 'intermediate' | 'advanced'
+  gender: 'male' | 'female'
   joinedDate: string
   feesPaid: boolean
   batchType?: 'morning' | 'evening'
@@ -168,6 +169,8 @@ function AdminDashboard() {
   const [levelDropdownOpen, setLevelDropdownOpen] = useState(false)
   const [editLevelDropdownOpen, setEditLevelDropdownOpen] = useState(false)
   const [reportsHorseDropdownOpen, setReportsHorseDropdownOpen] = useState(false)
+  const [genderDropdownOpen, setGenderDropdownOpen] = useState(false)
+  const [editGenderDropdownOpen, setEditGenderDropdownOpen] = useState(false)
   
   const [deleteModal, setDeleteModal] = useState<{
     isOpen: boolean;
@@ -188,7 +191,8 @@ function AdminDashboard() {
     age: '',
     phone: '',
     email: '',
-    level: 'beginner' as 'beginner' | 'intermediate' | 'advanced'
+    level: 'beginner' as 'beginner' | 'intermediate' | 'advanced',
+    gender: 'male' as 'male' | 'female'
   })
   const [newRider, setNewRider] = useState({
     name: '',
@@ -196,6 +200,7 @@ function AdminDashboard() {
     phone: '',
     email: '',
     level: 'beginner' as 'beginner' | 'intermediate' | 'advanced',
+    gender: 'male' as 'male' | 'female',
     batchType: 'morning' as 'morning' | 'evening',
     batchIndex: 0
   })
@@ -607,14 +612,14 @@ function AdminDashboard() {
   ]
 
   const horses: Horse[] = [
-    { id: 1, name: 'Alishan', breed: 'Arabian', age: 7, color: 'Bay', stall: 'A-01', status: 'healthy', lastCheckup: '2025-12-01', notes: 'Excellent condition, very energetic' },
+    { id: 1, name: 'Alishan', breed: 'Marwari', age: 7, color: 'Bay', stall: 'A-01', status: 'healthy', lastCheckup: '2025-12-01', notes: 'Excellent condition, very energetic' },
     { id: 2, name: 'Aslan', breed: 'Thoroughbred', age: 5, color: 'Chestnut', stall: 'A-02', status: 'healthy', lastCheckup: '2025-11-28', notes: 'Great for training sessions' },
-    { id: 3, name: 'Timur', breed: 'Akhal-Teke', age: 8, color: 'Golden', stall: 'A-03', status: 'healthy', lastCheckup: '2025-12-05', notes: 'Show horse, competition ready' },
+    { id: 3, name: 'Timur', breed: 'Thoroughbred', age: 8, color: 'Golden', stall: 'A-03', status: 'healthy', lastCheckup: '2025-12-05', notes: 'Show horse, competition ready' },
     { id: 4, name: 'Heera', breed: 'Marwari', age: 6, color: 'White', stall: 'B-01', status: 'attention', lastCheckup: '2025-12-08', notes: 'Minor leg strain, light exercise only' },
-    { id: 5, name: 'Clara', breed: 'Hanoverian', age: 4, color: 'Black', stall: 'B-02', status: 'healthy', lastCheckup: '2025-12-03', notes: 'Young and spirited, great potential' },
-    { id: 6, name: 'XLove', breed: 'Dutch Warmblood', age: 9, color: 'Dark Bay', stall: 'B-03', status: 'healthy', lastCheckup: '2025-11-30', notes: 'Experienced jumper, calm temperament' },
-    { id: 7, name: 'Baadshah', breed: 'Friesian', age: 10, color: 'Black', stall: 'C-01', status: 'treatment', lastCheckup: '2025-12-09', notes: 'Recovering from cold, on medication' },
-    { id: 8, name: 'Antilope', breed: 'Lusitano', age: 6, color: 'Grey', stall: 'C-02', status: 'healthy', lastCheckup: '2025-12-02', notes: 'Dressage specialist, very graceful' },
+    { id: 5, name: 'Clara', breed: 'Marwari', age: 4, color: 'Black', stall: 'B-02', status: 'healthy', lastCheckup: '2025-12-03', notes: 'Young and spirited, great potential' },
+    { id: 6, name: 'XLove', breed: 'Thoroughbred', age: 9, color: 'Dark Bay', stall: 'B-03', status: 'healthy', lastCheckup: '2025-11-30', notes: 'Experienced jumper, calm temperament' },
+    { id: 7, name: 'Baadshah', breed: 'Marwari', age: 10, color: 'Black', stall: 'C-01', status: 'treatment', lastCheckup: '2025-12-09', notes: 'Recovering from cold, on medication' },
+    { id: 8, name: 'Antilope', breed: 'Thoroughbred', age: 6, color: 'Grey', stall: 'C-02', status: 'healthy', lastCheckup: '2025-12-02', notes: 'Dressage specialist, very graceful' },
   ]
 
   const [morningBatches, setMorningBatches] = useState<Batch[]>([])
@@ -874,7 +879,8 @@ function AdminDashboard() {
       age: rider.age.toString(),
       phone: rider.phone,
       email: rider.email,
-      level: rider.level
+      level: rider.level,
+      gender: rider.gender
     })
     setEditRiderModal({ isOpen: true, rider, batchType, batchIndex })
   }
@@ -896,7 +902,8 @@ function AdminDashboard() {
           age: parseInt(editRiderData.age),
           phone: editRiderData.phone,
           email: editRiderData.email,
-          level: editRiderData.level
+          level: editRiderData.level,
+          gender: editRiderData.gender
         })
       })
       const result = await response.json()
@@ -1049,6 +1056,7 @@ function AdminDashboard() {
           phone: newRider.phone,
           email: newRider.email,
           level: newRider.level,
+          gender: newRider.gender,
           batchType: newRider.batchType,
           batchIndex: newRider.batchIndex
         })
@@ -1065,6 +1073,7 @@ function AdminDashboard() {
           phone: '',
           email: '',
           level: 'beginner',
+          gender: 'male',
           batchType: 'morning',
           batchIndex: 0
         })
@@ -1921,7 +1930,7 @@ function AdminDashboard() {
                         onClick={() => setHorseDropdownOpen(false)}
                       />
                       <div className="horse-dropdown__menu">
-                        {horses.filter(h => h.status === 'healthy').map(horse => (
+                        {horses?.map(horse => (
                           <div
                             key={horse.id}
                             className={`horse-dropdown__item ${checkinModal.selectedHorse === horse.name ? 'horse-dropdown__item--selected' : ''}`}
@@ -2085,41 +2094,80 @@ function AdminDashboard() {
                   </div>
                 </div>
 
-                <div className="form-field">
-                  <label>Skill Level</label>
-                  <div className="level-dropdown">
-                    <div 
-                      className={`level-dropdown__trigger ${editLevelDropdownOpen ? 'level-dropdown__trigger--open' : ''}`}
-                      onClick={() => setEditLevelDropdownOpen(!editLevelDropdownOpen)}
-                    >
-                      <span className="level-dropdown__value">
-                        {editRiderData.level.charAt(0).toUpperCase() + editRiderData.level.slice(1)}
-                      </span>
-                      <span className="level-dropdown__arrow">▼</span>
+                <div className="form-row">
+                  <div className="form-field">
+                    <label>Skill Level</label>
+                    <div className="level-dropdown">
+                      <div 
+                        className={`level-dropdown__trigger ${editLevelDropdownOpen ? 'level-dropdown__trigger--open' : ''}`}
+                        onClick={() => setEditLevelDropdownOpen(!editLevelDropdownOpen)}
+                      >
+                        <span className="level-dropdown__value">
+                          {editRiderData.level.charAt(0).toUpperCase() + editRiderData.level.slice(1)}
+                        </span>
+                        <span className="level-dropdown__arrow">▼</span>
+                      </div>
+                      {editLevelDropdownOpen && (
+                        <>
+                          <div 
+                            className="level-dropdown__overlay" 
+                            onClick={() => setEditLevelDropdownOpen(false)}
+                          />
+                          <div className="level-dropdown__menu">
+                            {(['beginner', 'intermediate', 'advanced'] as const).map(level => (
+                              <div
+                                key={level}
+                                className={`level-dropdown__item ${editRiderData.level === level ? 'level-dropdown__item--selected' : ''}`}
+                                onClick={() => {
+                                  setEditRiderData(prev => ({ ...prev, level }))
+                                  setEditLevelDropdownOpen(false)
+                                }}
+                              >
+                                <span className="level-dropdown__item-name">{level.charAt(0).toUpperCase() + level.slice(1)}</span>
+                                {editRiderData.level === level && <span className="level-dropdown__check">✓</span>}
+                              </div>
+                            ))}
+                          </div>
+                        </>
+                      )}
                     </div>
-                    {editLevelDropdownOpen && (
-                      <>
-                        <div 
-                          className="level-dropdown__overlay" 
-                          onClick={() => setEditLevelDropdownOpen(false)}
-                        />
-                        <div className="level-dropdown__menu">
-                          {(['beginner', 'intermediate', 'advanced'] as const).map(level => (
-                            <div
-                              key={level}
-                              className={`level-dropdown__item ${editRiderData.level === level ? 'level-dropdown__item--selected' : ''}`}
-                              onClick={() => {
-                                setEditRiderData(prev => ({ ...prev, level }))
-                                setEditLevelDropdownOpen(false)
-                              }}
-                            >
-                              <span className="level-dropdown__item-name">{level.charAt(0).toUpperCase() + level.slice(1)}</span>
-                              {editRiderData.level === level && <span className="level-dropdown__check">✓</span>}
-                            </div>
-                          ))}
-                        </div>
-                      </>
-                    )}
+                  </div>
+                  <div className="form-field">
+                    <label>Gender *</label>
+                    <div className="gender-dropdown">
+                      <div 
+                        className={`gender-dropdown__trigger ${editGenderDropdownOpen ? 'gender-dropdown__trigger--open' : ''}`}
+                        onClick={() => setEditGenderDropdownOpen(!editGenderDropdownOpen)}
+                      >
+                        <span className="gender-dropdown__value">
+                          {editRiderData.gender.charAt(0).toUpperCase() + editRiderData.gender.slice(1)}
+                        </span>
+                        <span className="gender-dropdown__arrow">▼</span>
+                      </div>
+                      {editGenderDropdownOpen && (
+                        <>
+                          <div 
+                            className="gender-dropdown__overlay" 
+                            onClick={() => setEditGenderDropdownOpen(false)}
+                          />
+                          <div className="gender-dropdown__menu">
+                            {(['male', 'female'] as const).map(gender => (
+                              <div
+                                key={gender}
+                                className={`gender-dropdown__item ${editRiderData.gender === gender ? 'gender-dropdown__item--selected' : ''}`}
+                                onClick={() => {
+                                  setEditRiderData(prev => ({ ...prev, gender }))
+                                  setEditGenderDropdownOpen(false)
+                                }}
+                              >
+                                <span className="gender-dropdown__item-name">{gender.charAt(0).toUpperCase() + gender.slice(1)}</span>
+                                {editRiderData.gender === gender && <span className="gender-dropdown__check">✓</span>}
+                              </div>
+                            ))}
+                          </div>
+                        </>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -2478,41 +2526,80 @@ function AdminDashboard() {
                   </div>
                 </div>
 
-                <div className="form-field">
-                  <label>Skill Level</label>
-                  <div className="level-dropdown">
-                    <div 
-                      className={`level-dropdown__trigger ${levelDropdownOpen ? 'level-dropdown__trigger--open' : ''}`}
-                      onClick={() => setLevelDropdownOpen(!levelDropdownOpen)}
-                    >
-                      <span className="level-dropdown__value">
-                        {newRider.level.charAt(0).toUpperCase() + newRider.level.slice(1)}
-                      </span>
-                      <span className="level-dropdown__arrow">▼</span>
+                <div className="form-row">
+                  <div className="form-field">
+                    <label>Skill Level</label>
+                    <div className="level-dropdown">
+                      <div 
+                        className={`level-dropdown__trigger ${levelDropdownOpen ? 'level-dropdown__trigger--open' : ''}`}
+                        onClick={() => setLevelDropdownOpen(!levelDropdownOpen)}
+                      >
+                        <span className="level-dropdown__value">
+                          {newRider.level.charAt(0).toUpperCase() + newRider.level.slice(1)}
+                        </span>
+                        <span className="level-dropdown__arrow">▼</span>
+                      </div>
+                      {levelDropdownOpen && (
+                        <>
+                          <div 
+                            className="level-dropdown__overlay" 
+                            onClick={() => setLevelDropdownOpen(false)}
+                          />
+                          <div className="level-dropdown__menu">
+                            {(['beginner', 'intermediate', 'advanced'] as const).map(level => (
+                              <div
+                                key={level}
+                                className={`level-dropdown__item ${newRider.level === level ? 'level-dropdown__item--selected' : ''}`}
+                                onClick={() => {
+                                  setNewRider(prev => ({ ...prev, level }))
+                                  setLevelDropdownOpen(false)
+                                }}
+                              >
+                                <span className="level-dropdown__item-name">{level.charAt(0).toUpperCase() + level.slice(1)}</span>
+                                {newRider.level === level && <span className="level-dropdown__check">✓</span>}
+                              </div>
+                            ))}
+                          </div>
+                        </>
+                      )}
                     </div>
-                    {levelDropdownOpen && (
-                      <>
-                        <div 
-                          className="level-dropdown__overlay" 
-                          onClick={() => setLevelDropdownOpen(false)}
-                        />
-                        <div className="level-dropdown__menu">
-                          {(['beginner', 'intermediate', 'advanced'] as const).map(level => (
-                            <div
-                              key={level}
-                              className={`level-dropdown__item ${newRider.level === level ? 'level-dropdown__item--selected' : ''}`}
-                              onClick={() => {
-                                setNewRider(prev => ({ ...prev, level }))
-                                setLevelDropdownOpen(false)
-                              }}
-                            >
-                              <span className="level-dropdown__item-name">{level.charAt(0).toUpperCase() + level.slice(1)}</span>
-                              {newRider.level === level && <span className="level-dropdown__check">✓</span>}
-                            </div>
-                          ))}
-                        </div>
-                      </>
-                    )}
+                  </div>
+                  <div className="form-field">
+                    <label>Gender *</label>
+                    <div className="gender-dropdown">
+                      <div 
+                        className={`gender-dropdown__trigger ${genderDropdownOpen ? 'gender-dropdown__trigger--open' : ''}`}
+                        onClick={() => setGenderDropdownOpen(!genderDropdownOpen)}
+                      >
+                        <span className="gender-dropdown__value">
+                          {newRider.gender.charAt(0).toUpperCase() + newRider.gender.slice(1)}
+                        </span>
+                        <span className="gender-dropdown__arrow">▼</span>
+                      </div>
+                      {genderDropdownOpen && (
+                        <>
+                          <div 
+                            className="gender-dropdown__overlay" 
+                            onClick={() => setGenderDropdownOpen(false)}
+                          />
+                          <div className="gender-dropdown__menu">
+                            {(['male', 'female'] as const).map(gender => (
+                              <div
+                                key={gender}
+                                className={`gender-dropdown__item ${newRider.gender === gender ? 'gender-dropdown__item--selected' : ''}`}
+                                onClick={() => {
+                                  setNewRider(prev => ({ ...prev, gender }))
+                                  setGenderDropdownOpen(false)
+                                }}
+                              >
+                                <span className="gender-dropdown__item-name">{gender.charAt(0).toUpperCase() + gender.slice(1)}</span>
+                                {newRider.gender === gender && <span className="gender-dropdown__check">✓</span>}
+                              </div>
+                            ))}
+                          </div>
+                        </>
+                      )}
+                    </div>
                   </div>
                 </div>
 
