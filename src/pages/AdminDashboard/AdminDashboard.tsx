@@ -493,10 +493,34 @@ function AdminDashboard() {
     }
   }
 
+  // Fetch rides for reports
+  const fetchRides = async () => {
+    try {
+      setReportsLoading(true)
+      const response = await fetch(`${API_BASE_URL}/rides?limit=1000`)
+      const result = await response.json()
+      
+      if (result.success) {
+        setAllRides(result.data)
+      }
+    } catch (err) {
+      console.error('Error fetching rides:', err)
+    } finally {
+      setReportsLoading(false)
+    }
+  }
+
   // Fetch data on component mount
   useEffect(() => {
     fetchBatches()
   }, [])
+  
+  // Fetch rides when reports tab is active
+  useEffect(() => {
+    if (activeTab === 'reports' && allRides.length === 0) {
+      fetchRides()
+    }
+  }, [activeTab])
 
   const stats: StatCard[] = [
     { title: 'Total Horses', value: 8, change: '+1 this month', icon: '🐴', trend: 'up' },
@@ -527,6 +551,34 @@ function AdminDashboard() {
   const [morningBatches, setMorningBatches] = useState<Batch[]>([])
 
   const [eveningBatches, setEveningBatches] = useState<Batch[]>([])
+
+  // Reports state
+  interface RideRecord {
+    _id: string
+    rideTime: string
+    riderName: string
+    riderId: string
+    riderLevel: 'beginner' | 'intermediate' | 'advanced'
+    horse: string
+    batchType: string
+    batchName: string
+  }
+  
+  interface HorseAnalytics {
+    horseName: string
+    totalRides: number
+    beginnerRides: number
+    intermediateRides: number
+    advancedRides: number
+    totalHours: number
+    beginnerHours: number
+    intermediateHours: number
+    advancedHours: number
+  }
+  
+  const [allRides, setAllRides] = useState<RideRecord[]>([])
+  const [selectedReportHorse, setSelectedReportHorse] = useState<string>('')
+  const [reportsLoading, setReportsLoading] = useState(false)
 
   // Helper function to check if rider needs to pay (activeClassesCount >= 26)
   const needsToPay = (rider: Rider) => rider.activeClassesCount >= 26
@@ -2653,6 +2705,306 @@ function AdminDashboard() {
     </div>
   )
 
+  // Calculate horse analytics from rides data
+  const calculateHorseAnalytics = (): HorseAnalytics[] => {
+    const horseMap = new Map<string, HorseAnalytics>()
+    
+    // Get unique horses from the horses array
+    horses.forEach(horse => {
+      horseMap.set(horse.name, {
+        horseName: horse.name,
+        totalRides: 0,
+        beginnerRides: 0,
+        intermediateRides: 0,
+        advancedRides: 0,
+        totalHours: 0,
+        beginnerHours: 0,
+        intermediateHours: 0,
+        advancedHours: 0
+      })
+    })
+    
+    // Calculate analytics from rides
+    allRides.forEach(ride => {
+      const analytics = horseMap.get(ride.horse)
+      if (analytics) {
+        analytics.totalRides++
+        analytics.totalHours += 0.75 // 45 mins = 0.75 hours
+        
+        if (ride.riderLevel === 'beginner') {
+          analytics.beginnerRides++
+          analytics.beginnerHours += 0.75
+        } else if (ride.riderLevel === 'intermediate') {
+          analytics.intermediateRides++
+          analytics.intermediateHours += 0.75
+        } else if (ride.riderLevel === 'advanced') {
+          analytics.advancedRides++
+          analytics.advancedHours += 0.75
+        }
+      }
+    })
+    
+    return Array.from(horseMap.values()).sort((a, b) => b.totalRides - a.totalRides)
+  }
+  
+  const horseAnalytics = calculateHorseAnalytics()
+  const selectedHorseData = horseAnalytics.find(h => h.horseName === selectedReportHorse)
+  const totalRidesAllHorses = horseAnalytics.reduce((sum, h) => sum + h.totalRides, 0)
+
+  const renderReports = () => (
+    <div className="reports-section">
+      {reportsLoading ? (
+        <div className="reports-loading">
+          <div className="spinner"></div>
+          <p>Loading reports data...</p>
+        </div>
+      ) : (
+        <>
+          {/* Horse Selection */}
+          <div className="reports-filter">
+            <label className="reports-filter__label">Select Horse:</label>
+            <select 
+              className="reports-filter__select"
+              value={selectedReportHorse}
+              onChange={(e) => setSelectedReportHorse(e.target.value)}
+            >
+              <option value="">-- All Horses --</option>
+              {horses.map(horse => (
+                <option key={horse.id} value={horse.name}>{horse.name}</option>
+              ))}
+            </select>
+            <button 
+              className="reports-filter__refresh"
+              onClick={fetchRides}
+              title="Refresh Data"
+            >
+              🔄 Refresh
+            </button>
+          </div>
+
+          {/* Summary Stats */}
+          <div className="reports-summary">
+            <div className="reports-stat-card">
+              <div className="reports-stat-card__icon">🐎</div>
+              <div className="reports-stat-card__content">
+                <span className="reports-stat-card__value">
+                  {selectedReportHorse ? selectedHorseData?.totalRides || 0 : totalRidesAllHorses}
+                </span>
+                <span className="reports-stat-card__label">Total Rides</span>
+              </div>
+            </div>
+            <div className="reports-stat-card reports-stat-card--beginner">
+              <div className="reports-stat-card__icon">🌱</div>
+              <div className="reports-stat-card__content">
+                <span className="reports-stat-card__value">
+                  {selectedReportHorse 
+                    ? selectedHorseData?.beginnerRides || 0 
+                    : horseAnalytics.reduce((sum, h) => sum + h.beginnerRides, 0)}
+                </span>
+                <span className="reports-stat-card__label">Beginner Rides</span>
+              </div>
+            </div>
+            <div className="reports-stat-card reports-stat-card--intermediate">
+              <div className="reports-stat-card__icon">⭐</div>
+              <div className="reports-stat-card__content">
+                <span className="reports-stat-card__value">
+                  {selectedReportHorse 
+                    ? selectedHorseData?.intermediateRides || 0 
+                    : horseAnalytics.reduce((sum, h) => sum + h.intermediateRides, 0)}
+                </span>
+                <span className="reports-stat-card__label">Intermediate Rides</span>
+              </div>
+            </div>
+            <div className="reports-stat-card reports-stat-card--advanced">
+              <div className="reports-stat-card__icon">🏆</div>
+              <div className="reports-stat-card__content">
+                <span className="reports-stat-card__value">
+                  {selectedReportHorse 
+                    ? selectedHorseData?.advancedRides || 0 
+                    : horseAnalytics.reduce((sum, h) => sum + h.advancedRides, 0)}
+                </span>
+                <span className="reports-stat-card__label">Advanced Rides</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Hours Breakdown */}
+          <div className="reports-hours">
+            <h3 className="reports-section-title">⏱️ Hours Breakdown (45 mins per ride)</h3>
+            <div className="reports-hours-grid">
+              <div className="reports-hours-card">
+                <span className="reports-hours-card__label">Total Hours</span>
+                <span className="reports-hours-card__value">
+                  {(selectedReportHorse 
+                    ? selectedHorseData?.totalHours || 0 
+                    : horseAnalytics.reduce((sum, h) => sum + h.totalHours, 0)
+                  ).toFixed(1)} hrs
+                </span>
+              </div>
+              <div className="reports-hours-card reports-hours-card--beginner">
+                <span className="reports-hours-card__label">Beginner Hours</span>
+                <span className="reports-hours-card__value">
+                  {(selectedReportHorse 
+                    ? selectedHorseData?.beginnerHours || 0 
+                    : horseAnalytics.reduce((sum, h) => sum + h.beginnerHours, 0)
+                  ).toFixed(1)} hrs
+                </span>
+              </div>
+              <div className="reports-hours-card reports-hours-card--intermediate">
+                <span className="reports-hours-card__label">Intermediate Hours</span>
+                <span className="reports-hours-card__value">
+                  {(selectedReportHorse 
+                    ? selectedHorseData?.intermediateHours || 0 
+                    : horseAnalytics.reduce((sum, h) => sum + h.intermediateHours, 0)
+                  ).toFixed(1)} hrs
+                </span>
+              </div>
+              <div className="reports-hours-card reports-hours-card--advanced">
+                <span className="reports-hours-card__label">Advanced Hours</span>
+                <span className="reports-hours-card__value">
+                  {(selectedReportHorse 
+                    ? selectedHorseData?.advancedHours || 0 
+                    : horseAnalytics.reduce((sum, h) => sum + h.advancedHours, 0)
+                  ).toFixed(1)} hrs
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Horse Comparison Table */}
+          <div className="reports-comparison">
+            <h3 className="reports-section-title">📊 Horse Comparison</h3>
+            <div className="reports-table-wrapper">
+              <table className="reports-table">
+                <thead>
+                  <tr>
+                    <th>Horse</th>
+                    <th>Total Rides</th>
+                    <th>Beginner</th>
+                    <th>Intermediate</th>
+                    <th>Advanced</th>
+                    <th>Total Hours</th>
+                    <th>Usage %</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {horseAnalytics.map((horse, index) => (
+                    <tr 
+                      key={horse.horseName} 
+                      className={`${selectedReportHorse === horse.horseName ? 'reports-table__row--selected' : ''} ${index === 0 ? 'reports-table__row--top' : ''}`}
+                      onClick={() => setSelectedReportHorse(horse.horseName === selectedReportHorse ? '' : horse.horseName)}
+                    >
+                      <td>
+                        <div className="reports-table__horse">
+                          {index === 0 && <span className="reports-table__crown">👑</span>}
+                          {horse.horseName}
+                        </div>
+                      </td>
+                      <td><strong>{horse.totalRides}</strong></td>
+                      <td><span className="level-badge level-badge--beginner">{horse.beginnerRides}</span></td>
+                      <td><span className="level-badge level-badge--intermediate">{horse.intermediateRides}</span></td>
+                      <td><span className="level-badge level-badge--advanced">{horse.advancedRides}</span></td>
+                      <td>{horse.totalHours.toFixed(1)} hrs</td>
+                      <td>
+                        <div className="reports-table__usage">
+                          <div 
+                            className="reports-table__usage-bar" 
+                            style={{ width: `${totalRidesAllHorses > 0 ? (horse.totalRides / totalRidesAllHorses * 100) : 0}%` }}
+                          />
+                          <span>{totalRidesAllHorses > 0 ? (horse.totalRides / totalRidesAllHorses * 100).toFixed(1) : 0}%</span>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Selected Horse Details */}
+          {selectedReportHorse && selectedHorseData && (
+            <div className="reports-details">
+              <h3 className="reports-section-title">🐴 {selectedReportHorse} - Detailed Analytics</h3>
+              <div className="reports-details-grid">
+                <div className="reports-detail-card">
+                  <h4>Ride Distribution</h4>
+                  <div className="reports-distribution">
+                    <div className="reports-distribution__bar">
+                      <div 
+                        className="reports-distribution__segment reports-distribution__segment--beginner"
+                        style={{ width: `${selectedHorseData.totalRides > 0 ? (selectedHorseData.beginnerRides / selectedHorseData.totalRides * 100) : 0}%` }}
+                        title={`Beginner: ${selectedHorseData.beginnerRides}`}
+                      />
+                      <div 
+                        className="reports-distribution__segment reports-distribution__segment--intermediate"
+                        style={{ width: `${selectedHorseData.totalRides > 0 ? (selectedHorseData.intermediateRides / selectedHorseData.totalRides * 100) : 0}%` }}
+                        title={`Intermediate: ${selectedHorseData.intermediateRides}`}
+                      />
+                      <div 
+                        className="reports-distribution__segment reports-distribution__segment--advanced"
+                        style={{ width: `${selectedHorseData.totalRides > 0 ? (selectedHorseData.advancedRides / selectedHorseData.totalRides * 100) : 0}%` }}
+                        title={`Advanced: ${selectedHorseData.advancedRides}`}
+                      />
+                    </div>
+                    <div className="reports-distribution__legend">
+                      <span className="reports-distribution__legend-item">
+                        <span className="reports-distribution__dot reports-distribution__dot--beginner"></span>
+                        Beginner ({selectedHorseData.totalRides > 0 ? (selectedHorseData.beginnerRides / selectedHorseData.totalRides * 100).toFixed(0) : 0}%)
+                      </span>
+                      <span className="reports-distribution__legend-item">
+                        <span className="reports-distribution__dot reports-distribution__dot--intermediate"></span>
+                        Intermediate ({selectedHorseData.totalRides > 0 ? (selectedHorseData.intermediateRides / selectedHorseData.totalRides * 100).toFixed(0) : 0}%)
+                      </span>
+                      <span className="reports-distribution__legend-item">
+                        <span className="reports-distribution__dot reports-distribution__dot--advanced"></span>
+                        Advanced ({selectedHorseData.totalRides > 0 ? (selectedHorseData.advancedRides / selectedHorseData.totalRides * 100).toFixed(0) : 0}%)
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <div className="reports-detail-card">
+                  <h4>Comparison to Average</h4>
+                  <div className="reports-comparison-stats">
+                    {(() => {
+                      const avgRides = totalRidesAllHorses / (horseAnalytics.length || 1)
+                      const diff = selectedHorseData.totalRides - avgRides
+                      const diffPercent = avgRides > 0 ? (diff / avgRides * 100) : 0
+                      return (
+                        <>
+                          <div className="reports-comparison-stat">
+                            <span className="reports-comparison-stat__label">Average rides per horse</span>
+                            <span className="reports-comparison-stat__value">{avgRides.toFixed(1)}</span>
+                          </div>
+                          <div className="reports-comparison-stat">
+                            <span className="reports-comparison-stat__label">{selectedReportHorse}'s rides</span>
+                            <span className="reports-comparison-stat__value">{selectedHorseData.totalRides}</span>
+                          </div>
+                          <div className={`reports-comparison-stat ${diff >= 0 ? 'reports-comparison-stat--positive' : 'reports-comparison-stat--negative'}`}>
+                            <span className="reports-comparison-stat__label">Difference from average</span>
+                            <span className="reports-comparison-stat__value">
+                              {diff >= 0 ? '+' : ''}{diff.toFixed(1)} ({diffPercent >= 0 ? '+' : ''}{diffPercent.toFixed(0)}%)
+                            </span>
+                          </div>
+                        </>
+                      )
+                    })()}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {allRides.length === 0 && (
+            <div className="reports-empty">
+              <span className="reports-empty__icon">📭</span>
+              <p>No ride data available yet. Check-in riders to generate reports.</p>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  )
+
   const renderPlaceholder = (title: string) => (
     <div className="placeholder-page">
       <div className="placeholder-icon">🚧</div>
@@ -2672,7 +3024,7 @@ function AdminDashboard() {
       case 'staff':
         return renderPlaceholder('Staff Management')
       case 'reports':
-        return renderPlaceholder('Reports & Analytics')
+        return renderReports()
       case 'settings':
         return renderPlaceholder('Settings')
       default:
