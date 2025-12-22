@@ -8,6 +8,7 @@ import EventNoteIcon from '@mui/icons-material/EventNote'
 import PeopleIcon from '@mui/icons-material/People'
 import BarChartIcon from '@mui/icons-material/BarChart'
 import SettingsIcon from '@mui/icons-material/Settings'
+import EditIcon from '@mui/icons-material/Edit'
 import './AdminDashboard.css'
 
 // Horse Icon Image Component
@@ -80,6 +81,7 @@ interface CheckinRecord {
   rideNumber: number
   checkinTime: string
   horse: string
+  paid: boolean
 }
 
 interface Rider {
@@ -670,7 +672,7 @@ function AdminDashboard() {
     
     doc.setFontSize(14)
     doc.setFont('helvetica', 'normal')
-    doc.text('Rider Check-in Report', pageWidth / 2, 30, { align: 'center' })
+    doc.text('Unpaid Classes Report', pageWidth / 2, 30, { align: 'center' })
     
     // Horizontal line
     doc.setLineWidth(0.5)
@@ -695,6 +697,13 @@ function AdminDashboard() {
     y += 8
     doc.text(`Joined: ${rider.joinedDate}`, 20, y)
     doc.text(`Total Classes: ${rider.activeClassesCount}`, 120, y)
+    
+    // Filter only unpaid checkins and sort by date (newest first)
+    const checkins = rider.checkins || []
+    const unpaidCheckins = checkins.filter(c => !c.paid)
+    const sortedCheckins = [...unpaidCheckins].sort((a, b) => 
+      new Date(b.checkinTime).getTime() - new Date(a.checkinTime).getTime()
+    )
     
     // Check-ins section
     y += 15
@@ -721,14 +730,8 @@ function AdminDashboard() {
     
     // Table rows
     doc.setFont('helvetica', 'normal')
-    const checkins = rider.checkins || []
     
-    // Sort checkins by date (newest first)
-    const sortedCheckins = [...checkins].sort((a, b) => 
-      new Date(b.checkinTime).getTime() - new Date(a.checkinTime).getTime()
-    )
-    
-    sortedCheckins.forEach((checkin) => {
+    sortedCheckins.forEach((checkin, index) => {
       // Check if we need a new page
       if (y > 270) {
         doc.addPage()
@@ -757,15 +760,17 @@ function AdminDashboard() {
         hour12: true 
       })
       
-      doc.text(String(checkin.rideNumber), 20, y)
+      // Number from total unpaid count (top is highest, goes down)
+      const displayNumber = sortedCheckins.length - index
+      doc.text(String(displayNumber), 20, y)
       doc.text(dateStr, 50, y)
       doc.text(timeStr, 100, y)
       doc.text(checkin.horse || 'N/A', 140, y)
       y += 7
     })
     
-    if (checkins.length === 0) {
-      doc.text('No check-ins recorded yet.', 20, y)
+    if (sortedCheckins.length === 0) {
+      doc.text('No unpaid check-ins to display.', 20, y)
     }
     
     // Footer
@@ -1574,7 +1579,7 @@ function AdminDashboard() {
                       }}
                       title="Edit batch timing"
                     >
-                      Edit
+                      <EditIcon style={{ fontSize: 18 }} />
                     </button>
                     {index >= 3 && (
                       <button 
@@ -1724,7 +1729,7 @@ function AdminDashboard() {
                       }}
                       title="Edit batch timing"
                     >
-                      Edit
+                      <EditIcon style={{ fontSize: 18 }} />
                     </button>
                     {index >= 3 && (
                       <button 
