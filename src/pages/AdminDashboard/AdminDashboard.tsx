@@ -1,7 +1,42 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { jsPDF } from 'jspdf'
+import CalendarMonthIcon from '@mui/icons-material/CalendarMonth'
+import SchoolIcon from '@mui/icons-material/School'
+import DashboardIcon from '@mui/icons-material/Dashboard'
+import EventNoteIcon from '@mui/icons-material/EventNote'
+import PeopleIcon from '@mui/icons-material/People'
+import BarChartIcon from '@mui/icons-material/BarChart'
+import SettingsIcon from '@mui/icons-material/Settings'
 import './AdminDashboard.css'
+
+// Horse Icon Image Component
+const HorseIcon = ({ size = 32 }: { size?: number }) => (
+  <img 
+    src="/horse-icon.png" 
+    alt="Horse" 
+    style={{ 
+      width: size, 
+      height: size, 
+      objectFit: 'cover',
+      borderRadius: '50%'
+    }} 
+  />
+)
+
+// Rider Icon Image Component
+const RiderIcon = ({ size = 32 }: { size?: number }) => (
+  <img 
+    src="/rider-icon.png" 
+    alt="Rider" 
+    style={{ 
+      width: size, 
+      height: size, 
+      objectFit: 'cover',
+      borderRadius: '50%'
+    }} 
+  />
+)
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:3001/api' : '/api')
 
@@ -17,7 +52,7 @@ interface StatCard {
   title: string
   value: string | number
   change: string
-  icon: string
+  icon: ReactNode
   trend: 'up' | 'down' | 'neutral'
 }
 
@@ -551,10 +586,9 @@ function AdminDashboard() {
   }, [activeTab])
 
   const stats: StatCard[] = [
-    { title: 'Total Horses', value: 8, change: '+1 this month', icon: '🐴', trend: 'up' },
-    { title: 'Active Bookings', value: 23, change: '+5 this week', icon: '📅', trend: 'up' },
-    { title: 'Revenue (MTD)', value: '$34,250', change: '+12% vs last month', icon: '💰', trend: 'up' },
-    { title: 'Lesson Hours', value: 156, change: '-3% vs last month', icon: '📚', trend: 'down' },
+    { title: 'Total Horses', value: 8, change: '+1 this month', icon: <HorseIcon size={32} />, trend: 'up' },
+    { title: 'Active Bookings', value: 23, change: '+5 this week', icon: <CalendarMonthIcon sx={{ fontSize: 32, color: '#d4af37' }} />, trend: 'up' },
+    { title: 'Lesson Hours', value: 156, change: '-3% vs last month', icon: <SchoolIcon sx={{ fontSize: 32, color: '#d4af37' }} />, trend: 'down' },
   ]
 
   const recentBookings: Booking[] = [
@@ -1181,7 +1215,6 @@ function AdminDashboard() {
           <div className="admin__horse-list">
             {horses.slice(0, 5).map((horse) => (
               <div key={horse.id} className="horse-item">
-                <div className="horse-item__avatar">🐴</div>
                 <div className="horse-item__info">
                   <span className="horse-item__name">{horse.name}</span>
                   <span className="horse-item__details">
@@ -1205,11 +1238,11 @@ function AdminDashboard() {
               <span className="quick-action__label">New Booking</span>
             </button>
             <button className="quick-action" onClick={() => setActiveTab('horses')}>
-              <span className="quick-action__icon">🐴</span>
+              <span className="quick-action__icon"><HorseIcon size={20} /></span>
               <span className="quick-action__label">Add Horse</span>
             </button>
             <button className="quick-action" onClick={() => setActiveTab('riders')}>
-              <span className="quick-action__icon">🏇</span>
+              <span className="quick-action__icon"><RiderIcon size={20} /></span>
               <span className="quick-action__label">Add Rider</span>
             </button>
             <button className="quick-action">
@@ -1295,7 +1328,7 @@ function AdminDashboard() {
           <div key={horse.id} className="horse-card">
             <div className="horse-card__header">
               <div className="horse-card__avatar">
-                <span>🐴</span>
+                <HorseIcon size={32} />
               </div>
               <div className="horse-card__title">
                 <h3 className="horse-card__name">{horse.name}</h3>
@@ -1541,7 +1574,7 @@ function AdminDashboard() {
                       }}
                       title="Edit batch timing"
                     >
-                      ✏️
+                      Edit
                     </button>
                     {index >= 3 && (
                       <button 
@@ -1691,7 +1724,7 @@ function AdminDashboard() {
                       }}
                       title="Edit batch timing"
                     >
-                      ✏️
+                      Edit
                     </button>
                     {index >= 3 && (
                       <button 
@@ -1984,7 +2017,7 @@ function AdminDashboard() {
         <div className="modal-overlay" onClick={() => !loading && setEditRiderModal({ isOpen: false, rider: null, batchType: 'morning', batchIndex: 0 })}>
           <div className="modal modal--edit-rider" onClick={(e) => e.stopPropagation()}>
             <div className="modal__header">
-              <h2 className="modal__title">✏️ Edit Rider</h2>
+              <h2 className="modal__title">Edit Rider</h2>
               <button 
                 className="modal__close"
                 onClick={() => !loading && setEditRiderModal({ isOpen: false, rider: null, batchType: 'morning', batchIndex: 0 })}
@@ -3089,49 +3122,49 @@ function AdminDashboard() {
             className={`admin__nav-item ${activeTab === 'overview' ? 'active' : ''}`}
             onClick={() => setActiveTab('overview')}
           >
-            <span className="admin__nav-icon">📊</span>
+            <span className="admin__nav-icon"><DashboardIcon sx={{ fontSize: 22 }} /></span>
             Overview
           </button>
           <button 
             className={`admin__nav-item ${activeTab === 'horses' ? 'active' : ''}`}
             onClick={() => setActiveTab('horses')}
           >
-            <span className="admin__nav-icon">🐎</span>
+            <span className="admin__nav-icon"><HorseIcon size={22} /></span>
             Horses
           </button>
           <button 
             className={`admin__nav-item ${activeTab === 'riders' ? 'active' : ''}`}
             onClick={() => setActiveTab('riders')}
           >
-            <span className="admin__nav-icon">🏇</span>
+            <span className="admin__nav-icon"><RiderIcon size={22} /></span>
             Riders
           </button>
           <button 
             className={`admin__nav-item ${activeTab === 'bookings' ? 'active' : ''}`}
             onClick={() => setActiveTab('bookings')}
           >
-            <span className="admin__nav-icon">📅</span>
+            <span className="admin__nav-icon"><EventNoteIcon sx={{ fontSize: 22 }} /></span>
             Bookings
           </button>
           <button 
             className={`admin__nav-item ${activeTab === 'staff' ? 'active' : ''}`}
             onClick={() => setActiveTab('staff')}
           >
-            <span className="admin__nav-icon">🧑‍💼</span>
+            <span className="admin__nav-icon"><PeopleIcon sx={{ fontSize: 22 }} /></span>
             Staff
           </button>
           <button 
             className={`admin__nav-item ${activeTab === 'reports' ? 'active' : ''}`}
             onClick={() => setActiveTab('reports')}
           >
-            <span className="admin__nav-icon">📈</span>
+            <span className="admin__nav-icon"><BarChartIcon sx={{ fontSize: 22 }} /></span>
             Reports
           </button>
           <button 
             className={`admin__nav-item ${activeTab === 'settings' ? 'active' : ''}`}
             onClick={() => setActiveTab('settings')}
           >
-            <span className="admin__nav-icon">⚙️</span>
+            <span className="admin__nav-icon"><SettingsIcon sx={{ fontSize: 22 }} /></span>
             Settings
           </button>
         </nav>
