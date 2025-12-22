@@ -1,16 +1,4 @@
 /* ===========================
-   Body Scroll Lock for Modals
-   =========================== */
-body.modal-open {
-  position: fixed;
-  top: calc(var(--scroll-y, 0) * -1);
-  left: 0;
-  right: 0;
-  overflow: hidden;
-  width: 100%;
-}
-
-/* ===========================
    Theme Variables
    =========================== */
 
@@ -4390,7 +4378,7 @@ body.modal-open {
     right: 1rem;
   }
   
-  /* Modals - Bottom Sheet Style */
+  /* Modals - Start from top */
   .modal-overlay {
     padding: 0;
     align-items: flex-end;
@@ -4399,7 +4387,8 @@ body.modal-open {
   .modal {
     width: 100%;
     max-width: 100%;
-    max-height: 90vh;
+    min-height: 100vh;
+    max-height: 100vh;
     border-radius: 20px 20px 0 0;
     animation: slideUp 0.3s ease;
     display: flex;
