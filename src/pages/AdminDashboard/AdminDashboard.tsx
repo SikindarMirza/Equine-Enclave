@@ -71,6 +71,12 @@ interface Batch {
   riders: Rider[]
 }
 
+interface Toast {
+  id: number
+  message: string
+  type: 'success' | 'error'
+}
+
 function AdminDashboard() {
   const navigate = useNavigate()
   const [isAuthenticated, setIsAuthenticated] = useState(false)
@@ -154,6 +160,22 @@ function AdminDashboard() {
   
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  
+  // Toast notifications
+  const [toasts, setToasts] = useState<Toast[]>([])
+  
+  const showToast = (message: string, type: 'success' | 'error') => {
+    const id = Date.now()
+    setToasts(prev => [...prev, { id, message, type }])
+    // Auto remove after 4 seconds
+    setTimeout(() => {
+      setToasts(prev => prev.filter(toast => toast.id !== id))
+    }, 4000)
+  }
+  
+  const removeToast = (id: number) => {
+    setToasts(prev => prev.filter(toast => toast.id !== id))
+  }
   
   // Form validation errors
   const [formErrors, setFormErrors] = useState<{
@@ -364,16 +386,18 @@ function AdminDashboard() {
       const result = await response.json()
       
       if (result.success) {
+        const batchName = name
         await fetchBatches() // Refresh data
         setEditBatchModal({ isOpen: false, batchType: 'morning', batchIndex: 0, name: '', time: '' })
+        showToast(`${batchName} timing updated!`, 'success')
       } else {
         setLoading(false)
-        setFormErrors(prev => ({ ...prev, editBatch: { name: result.message || 'Failed to update batch timing' } }))
+        showToast(result.message || 'Failed to update batch timing', 'error')
       }
     } catch (err) {
       console.error('Error updating batch timing:', err)
       setLoading(false)
-      setFormErrors(prev => ({ ...prev, editBatch: { name: 'Failed to update batch timing. Please try again.' } }))
+      showToast('Failed to update batch timing', 'error')
     }
   }
 
@@ -402,25 +426,29 @@ function AdminDashboard() {
       const result = await response.json()
       
       if (result.success) {
+        const batchName = name
         await fetchBatches() // Refresh data
         setAddBatchModal({ isOpen: false, batchType: 'morning', name: '', time: '' })
+        showToast(`${batchName} created successfully!`, 'success')
       } else {
         setLoading(false)
-        setFormErrors(prev => ({ ...prev, addBatch: { name: result.message || 'Failed to add batch' } }))
+        showToast(result.message || 'Failed to add batch', 'error')
       }
     } catch (err) {
       console.error('Error adding batch:', err)
       setLoading(false)
-      setFormErrors(prev => ({ ...prev, addBatch: { name: 'Failed to add batch. Please try again.' } }))
+      showToast('Failed to add batch', 'error')
     }
   }
 
   // Function to delete batch
   const handleDeleteBatch = async () => {
     if (!deleteBatchModal.batch?._id) {
-      alert('Cannot delete batch - missing batch ID')
+      showToast('Cannot delete batch - missing batch ID', 'error')
       return
     }
+    
+    const batchName = deleteBatchModal.batch.name
     
     setLoading(true)
     try {
@@ -432,14 +460,15 @@ function AdminDashboard() {
       if (result.success) {
         await fetchBatches() // Refresh data
         setDeleteBatchModal({ isOpen: false, batch: null, batchType: 'morning' })
+        showToast(`${batchName} deleted successfully!`, 'success')
       } else {
         setLoading(false)
-        alert(result.message || 'Failed to delete batch')
+        showToast(result.message || 'Failed to delete batch', 'error')
       }
     } catch (err) {
       console.error('Error deleting batch:', err)
       setLoading(false)
-      alert('Failed to delete batch')
+      showToast('Failed to delete batch', 'error')
     }
   }
 
@@ -690,6 +719,7 @@ function AdminDashboard() {
     if (!deleteModal.rider) return
     
     const riderId = deleteModal.rider.id
+    const riderName = deleteModal.rider.name
     
     setLoading(true)
     try {
@@ -701,14 +731,15 @@ function AdminDashboard() {
       if (result.success) {
         await fetchBatches() // Refresh data
         setDeleteModal({ isOpen: false, rider: null, batchType: 'morning', batchIndex: 0 })
+        showToast(`${riderName} removed successfully!`, 'success')
       } else {
         setLoading(false)
-        alert(result.message || 'Failed to delete rider')
+        showToast(result.message || 'Failed to remove rider', 'error')
       }
     } catch (err) {
       console.error('Error deleting rider:', err)
       setLoading(false)
-      alert('Failed to delete rider')
+      showToast('Failed to remove rider', 'error')
     }
   }
 
@@ -729,6 +760,7 @@ function AdminDashboard() {
     if (!editRiderModal.rider) return
     
     const riderId = editRiderModal.rider.id
+    const riderName = editRiderData.name
     
     setLoading(true)
     try {
@@ -748,14 +780,15 @@ function AdminDashboard() {
       if (result.success) {
         await fetchBatches() // Refresh data
         setEditRiderModal({ isOpen: false, rider: null, batchType: 'morning', batchIndex: 0 })
+        showToast(`${riderName} updated successfully!`, 'success')
       } else {
         setLoading(false)
-        alert(result.message || 'Failed to update rider')
+        showToast(result.message || 'Failed to update rider', 'error')
       }
     } catch (err) {
       console.error('Error updating rider:', err)
       setLoading(false)
-      alert('Failed to update rider')
+      showToast('Failed to update rider', 'error')
     }
   }
 
@@ -781,6 +814,7 @@ function AdminDashboard() {
     if (!paymentModal.rider) return
     
     const riderId = paymentModal.rider.id
+    const riderName = paymentModal.rider.name
     
     setLoading(true)
     try {
@@ -792,14 +826,15 @@ function AdminDashboard() {
       if (result.success) {
         await fetchBatches() // Refresh data
         setPaymentModal({ isOpen: false, rider: null, batchType: 'morning', batchIndex: 0 })
+        showToast(`Payment recorded for ${riderName}!`, 'success')
       } else {
         setLoading(false)
-        alert(result.message || 'Failed to process payment')
+        showToast(result.message || 'Failed to process payment', 'error')
       }
     } catch (err) {
       console.error('Error processing payment:', err)
       setLoading(false)
-      alert('Failed to process payment')
+      showToast('Failed to process payment', 'error')
     }
   }
 
@@ -843,12 +878,13 @@ function AdminDashboard() {
       
       if (result.success) {
         await fetchBatches() // Refresh data
+        showToast(`${rider.name} moved successfully!`, 'success')
       } else {
-        alert(result.message || 'Failed to move rider')
+        showToast(result.message || 'Failed to move rider', 'error')
       }
     } catch (err) {
       console.error('Error moving rider:', err)
-      alert('Failed to move rider')
+      showToast('Failed to move rider', 'error')
     }
     
     setAssignBatchModal({ isOpen: false, rider: null, sourceBatchType: 'morning', sourceBatchIndex: 0, targetBatchType: null, targetBatchIndex: null, isConfirming: false, isMoving: false })
@@ -896,6 +932,7 @@ function AdminDashboard() {
       const result = await response.json()
       
       if (result.success) {
+        const riderName = newRider.name
         await fetchBatches() // Refresh data
         // Reset form and close modal
         setNewRider({
@@ -908,14 +945,15 @@ function AdminDashboard() {
           batchIndex: 0
         })
         setAddRiderModal(false)
+        showToast(`${riderName} added successfully!`, 'success')
       } else {
         setLoading(false)
-        setFormErrors(prev => ({ ...prev, addRider: { name: result.message || 'Failed to add rider' } }))
+        showToast(result.message || 'Failed to add rider', 'error')
       }
     } catch (err) {
       console.error('Error adding rider:', err)
       setLoading(false)
-      setFormErrors(prev => ({ ...prev, addRider: { name: 'Failed to add rider. Please try again.' } }))
+      showToast('Failed to add rider. Please try again.', 'error')
     }
   }
 
@@ -949,13 +987,15 @@ function AdminDashboard() {
         setCheckinModal({ isOpen: false, rider: null, batchType: 'morning', batchIndex: 0, selectedHorse: '' })
         setHorseDropdownOpen(false)
         setFormErrors(prev => ({ ...prev, checkin: {} }))
+        showToast(`${checkinModal.rider?.name} checked in successfully!`, 'success')
       } else {
         setLoading(false)
-        alert(result.message || 'Failed to check in rider')
+        showToast(result.message || 'Failed to check in rider', 'error')
       }
     } catch (err) {
       console.error('Error checking in rider:', err)
       setLoading(false)
+      showToast('Failed to check in rider. Please try again.', 'error')
       alert('Failed to check in rider')
     }
   }
@@ -2738,39 +2778,41 @@ function AdminDashboard() {
           </div>
           <div className="admin__header-right">
             <div className="admin__header-controls">
-              <div className="max-persons-dropdown">
-                <span className="max-persons-dropdown__label">Max per Batch:</span>
-                <div 
-                  className={`max-persons-dropdown__trigger ${maxPersonsDropdownOpen ? 'max-persons-dropdown__trigger--open' : ''}`}
-                  onClick={() => setMaxPersonsDropdownOpen(!maxPersonsDropdownOpen)}
-                >
-                  <span className="max-persons-dropdown__value">{maxPersonsPerBatch}</span>
-                  <span className="max-persons-dropdown__arrow">▼</span>
+              {activeTab === 'riders' && (
+                <div className="max-persons-dropdown">
+                  <span className="max-persons-dropdown__label">Max per Batch:</span>
+                  <div 
+                    className={`max-persons-dropdown__trigger ${maxPersonsDropdownOpen ? 'max-persons-dropdown__trigger--open' : ''}`}
+                    onClick={() => setMaxPersonsDropdownOpen(!maxPersonsDropdownOpen)}
+                  >
+                    <span className="max-persons-dropdown__value">{maxPersonsPerBatch}</span>
+                    <span className="max-persons-dropdown__arrow">▼</span>
+                  </div>
+                  {maxPersonsDropdownOpen && (
+                    <>
+                      <div 
+                        className="max-persons-dropdown__overlay" 
+                        onClick={() => setMaxPersonsDropdownOpen(false)}
+                      />
+                      <div className="max-persons-dropdown__menu">
+                        {[5, 6, 7, 8, 9, 10, 12, 15, 20].map(num => (
+                          <div
+                            key={num}
+                            className={`max-persons-dropdown__item ${maxPersonsPerBatch === num ? 'max-persons-dropdown__item--selected' : ''}`}
+                            onClick={() => {
+                              handleMaxPersonsChange(num)
+                              setMaxPersonsDropdownOpen(false)
+                            }}
+                          >
+                            {num}
+                            {maxPersonsPerBatch === num && <span className="max-persons-dropdown__check">✓</span>}
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
                 </div>
-                {maxPersonsDropdownOpen && (
-                  <>
-                    <div 
-                      className="max-persons-dropdown__overlay" 
-                      onClick={() => setMaxPersonsDropdownOpen(false)}
-                    />
-                    <div className="max-persons-dropdown__menu">
-                      {[5, 6, 7, 8, 9, 10, 12, 15, 20].map(num => (
-                        <div
-                          key={num}
-                          className={`max-persons-dropdown__item ${maxPersonsPerBatch === num ? 'max-persons-dropdown__item--selected' : ''}`}
-                          onClick={() => {
-                            handleMaxPersonsChange(num)
-                            setMaxPersonsDropdownOpen(false)
-                          }}
-                        >
-                          {num}
-                          {maxPersonsPerBatch === num && <span className="max-persons-dropdown__check">✓</span>}
-                        </div>
-                      ))}
-                    </div>
-                  </>
-                )}
-              </div>
+              )}
               <button className="admin__logout-btn" onClick={handleLogout} title="Logout">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
@@ -2843,6 +2885,23 @@ function AdminDashboard() {
 
         {renderContent()}
       </main>
+
+      {/* Toast Notifications */}
+      <div className="toast-container">
+        {toasts.map(toast => (
+          <div 
+            key={toast.id} 
+            className={`toast toast--${toast.type}`}
+            onClick={() => removeToast(toast.id)}
+          >
+            <span className="toast__icon">
+              {toast.type === 'success' ? '✓' : '✕'}
+            </span>
+            <span className="toast__message">{toast.message}</span>
+            <button className="toast__close" onClick={() => removeToast(toast.id)}>×</button>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
