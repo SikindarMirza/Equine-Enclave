@@ -688,6 +688,21 @@ function AdminDashboard() {
     return minutesSinceCheckin < 45
   }
 
+  // Check if rider completed a ride today (but not currently in session)
+  const hasRiddenToday = (rider: Rider) => {
+    if (!rider.checkins || rider.checkins.length === 0) return false
+    
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    
+    // Check if any checkin is from today
+    return rider.checkins.some(checkin => {
+      const checkinDate = new Date(checkin.checkinTime)
+      checkinDate.setHours(0, 0, 0, 0)
+      return checkinDate.getTime() === today.getTime()
+    })
+  }
+
   // Export rider check-in history to PDF
   const exportRiderPDF = (rider: Rider, batchType: 'morning' | 'evening', batchIndex: number) => {
     const doc = new jsPDF()
@@ -1523,7 +1538,8 @@ function AdminDashboard() {
                   <tr key={rider.id} className={selectedRiderId === rider.id ? 'highlighted-row' : ''}>
                     <td>
                       <div className="rider-name">
-                        {isRiderInSession(rider) && <span className="session-indicator" title="Currently in session"></span>}
+                        {isRiderInSession(rider) && <span className="session-indicator session-indicator--active" title="Currently in session"></span>}
+                        {!isRiderInSession(rider) && hasRiddenToday(rider) && <span className="session-indicator session-indicator--completed" title="Completed ride today"></span>}
                         {rider.name}
                       </div>
                     </td>
@@ -1665,7 +1681,8 @@ function AdminDashboard() {
                             <tr key={rider.id}>
                               <td>
                                 <div className="rider-name">
-                                  {isRiderInSession(rider) && <span className="session-indicator" title="Currently in session"></span>}
+                                  {isRiderInSession(rider) && <span className="session-indicator session-indicator--active" title="Currently in session"></span>}
+                                  {!isRiderInSession(rider) && hasRiddenToday(rider) && <span className="session-indicator session-indicator--completed" title="Completed ride today"></span>}
                                   {rider.name}
                                 </div>
                               </td>
@@ -1816,7 +1833,8 @@ function AdminDashboard() {
                             <tr key={rider.id}>
                               <td>
                                 <div className="rider-name">
-                                  {isRiderInSession(rider) && <span className="session-indicator" title="Currently in session"></span>}
+                                  {isRiderInSession(rider) && <span className="session-indicator session-indicator--active" title="Currently in session"></span>}
+                                  {!isRiderInSession(rider) && hasRiddenToday(rider) && <span className="session-indicator session-indicator--completed" title="Completed ride today"></span>}
                                   {rider.name}
                                 </div>
                               </td>

@@ -2793,21 +2793,32 @@
   gap: 0.75rem;
 }
 
-/* Session Indicator - Green blinking light for active riders */
+/* Session Indicator - Rider status indicators */
 .session-indicator {
   width: 10px;
   height: 10px;
   min-width: 10px;
-  background: #2ecc71;
   border-radius: 50%;
   display: inline-block;
   margin-right: 8px;
   flex-shrink: 0;
-  box-shadow: 0 0 8px #2ecc71, 0 0 12px #2ecc71;
-  animation: sessionPulse 1.5s ease-in-out infinite;
 }
 
-@keyframes sessionPulse {
+/* Active session - green blinking */
+.session-indicator--active {
+  background: #2ecc71;
+  box-shadow: 0 0 8px #2ecc71, 0 0 12px #2ecc71;
+  animation: sessionPulseGreen 1.5s ease-in-out infinite;
+}
+
+/* Completed today - yellow static */
+.session-indicator--completed {
+  background: var(--accent-primary, #d4af37);
+  opacity: 0.9;
+  box-shadow: 0 0 4px var(--accent-primary, #d4af37);
+}
+
+@keyframes sessionPulseGreen {
   0%, 100% {
     opacity: 1;
     box-shadow: 0 0 8px #2ecc71, 0 0 12px #2ecc71;
