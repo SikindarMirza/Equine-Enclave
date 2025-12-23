@@ -2797,10 +2797,12 @@
 .session-indicator {
   width: 10px;
   height: 10px;
+  min-width: 10px;
   background: #2ecc71;
   border-radius: 50%;
   display: inline-block;
   margin-right: 8px;
+  flex-shrink: 0;
   box-shadow: 0 0 8px #2ecc71, 0 0 12px #2ecc71;
   animation: sessionPulse 1.5s ease-in-out infinite;
 }
@@ -4770,6 +4772,16 @@
     overflow-x: auto;
     overflow-y: hidden;
     white-space: nowrap;
+  }
+  
+  /* Smaller session indicator on mobile */
+  .session-indicator {
+    width: 8px;
+    height: 8px;
+    min-width: 8px;
+    margin-right: 1px;
+    margin-left: 5px;
+    flex-shrink: 0;
   }
   
   /* Light theme sticky columns */
