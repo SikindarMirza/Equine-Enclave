@@ -667,6 +667,27 @@ function AdminDashboard() {
     return `${month}${year}`
   }
 
+  // Check if rider is currently in session (last check-in < 45 minutes ago)
+  const isRiderInSession = (rider: Rider) => {
+    if (!rider.checkins || rider.checkins.length === 0) return false
+    
+    // Get the most recent check-in (unpaid ones first, then by time)
+    const unpaidCheckins = rider.checkins.filter(c => !c.paid)
+    if (unpaidCheckins.length === 0) return false
+    
+    // Sort by checkin time descending to get the latest
+    const sortedCheckins = [...unpaidCheckins].sort((a, b) => 
+      new Date(b.checkinTime).getTime() - new Date(a.checkinTime).getTime()
+    )
+    
+    const lastCheckin = sortedCheckins[0]
+    const lastCheckinTime = new Date(lastCheckin.checkinTime).getTime()
+    const now = Date.now()
+    const minutesSinceCheckin = (now - lastCheckinTime) / (1000 * 60)
+    
+    return minutesSinceCheckin < 45
+  }
+
   // Export rider check-in history to PDF
   const exportRiderPDF = (rider: Rider, batchType: 'morning' | 'evening', batchIndex: number) => {
     const doc = new jsPDF()
@@ -1502,6 +1523,7 @@ function AdminDashboard() {
                   <tr key={rider.id} className={selectedRiderId === rider.id ? 'highlighted-row' : ''}>
                     <td>
                       <div className="rider-name">
+                        {isRiderInSession(rider) && <span className="session-indicator" title="Currently in session"></span>}
                         {rider.name}
                       </div>
                     </td>
@@ -1643,6 +1665,7 @@ function AdminDashboard() {
                             <tr key={rider.id}>
                               <td>
                                 <div className="rider-name">
+                                  {isRiderInSession(rider) && <span className="session-indicator" title="Currently in session"></span>}
                                   {rider.name}
                                 </div>
                               </td>
@@ -1793,6 +1816,7 @@ function AdminDashboard() {
                             <tr key={rider.id}>
                               <td>
                                 <div className="rider-name">
+                                  {isRiderInSession(rider) && <span className="session-indicator" title="Currently in session"></span>}
                                   {rider.name}
                                 </div>
                               </td>

@@ -2793,6 +2793,29 @@
   gap: 0.75rem;
 }
 
+/* Session Indicator - Green blinking light for active riders */
+.session-indicator {
+  width: 10px;
+  height: 10px;
+  background: #2ecc71;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 8px;
+  box-shadow: 0 0 8px #2ecc71, 0 0 12px #2ecc71;
+  animation: sessionPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes sessionPulse {
+  0%, 100% {
+    opacity: 1;
+    box-shadow: 0 0 8px #2ecc71, 0 0 12px #2ecc71;
+  }
+  50% {
+    opacity: 0.5;
+    box-shadow: 0 0 4px #2ecc71, 0 0 6px #2ecc71;
+  }
+}
+
 .rider-avatar {
   font-size: 1.25rem;
 }
