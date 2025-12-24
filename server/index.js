@@ -1,10 +1,12 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 const connectDB = require('./config/database');
 const ridersRouter = require('./routes/riders');
 const batchesRouter = require('./routes/batches');
 const authRouter = require('./routes/auth');
+const ridesRouter = require('./routes/rides');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -22,10 +24,11 @@ app.use((req, res, next) => {
   next();
 });
 
-// Routes
+// API Routes
 app.use('/api/auth', authRouter);
 app.use('/api/riders', ridersRouter);
 app.use('/api/batches', batchesRouter);
+app.use('/api/rides', ridesRouter);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
@@ -36,36 +39,19 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Root endpoint
-app.get('/', (req, res) => {
-  res.json({
-    message: 'Equine Enclave API',
-    version: '1.0.0',
-    database: 'MongoDB',
-    endpoints: {
-      health: 'GET /api/health',
-      riders: {
-        getAll: 'GET /api/riders',
-        getBatches: 'GET /api/riders/batches',
-        getOne: 'GET /api/riders/:id',
-        create: 'POST /api/riders',
-        update: 'PUT /api/riders/:id',
-        checkin: 'PATCH /api/riders/:id/checkin',
-        pay: 'PATCH /api/riders/:id/pay',
-        move: 'PATCH /api/riders/:id/move',
-        delete: 'DELETE /api/riders/:id',
-        seed: 'POST /api/riders/seed (populate initial data)'
-      }
-    }
-  });
-});
+// Serve static files from React build
+app.use(express.static(path.join(__dirname, 'public')));
 
-// 404 handler
-app.use((req, res) => {
-  res.status(404).json({
-    success: false,
-    message: 'Endpoint not found'
-  });
+// Handle React routing - serve index.html for all non-API routes
+app.get('*', (req, res) => {
+  // Don't serve index.html for API routes
+  if (req.path.startsWith('/api')) {
+    return res.status(404).json({
+      success: false,
+      message: 'API endpoint not found'
+    });
+  }
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 // Error handler
@@ -86,7 +72,7 @@ app.listen(PORT, () => {
 ║  Server running on: http://localhost:${PORT}      ║
 ║  Database: MongoDB                             ║
 ║                                                ║
-║  Available endpoints:                          ║
+║  Rider endpoints:                              ║
 ║  • GET    /api/riders           - All riders   ║
 ║  • GET    /api/riders/batches   - All batches  ║
 ║  • GET    /api/riders/:id       - Single rider ║
@@ -97,6 +83,13 @@ app.listen(PORT, () => {
 ║  • PATCH  /api/riders/:id/move  - Move batch   ║
 ║  • DELETE /api/riders/:id       - Delete rider ║
 ║  • POST   /api/riders/seed      - Seed data    ║
+║                                                ║
+║  Ride endpoints:                               ║
+║  • GET    /api/rides            - All rides    ║
+║  • GET    /api/rides/:id        - Single ride  ║
+║  • GET    /api/rides/rider/:id  - Rider rides  ║
+║  • GET    /api/rides/stats/summary - Stats     ║
+║  • DELETE /api/rides/:id        - Delete ride  ║
 ╚════════════════════════════════════════════════╝
   `);
 });

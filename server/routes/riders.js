@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Rider = require('../models/Rider');
 const Batch = require('../models/Batch');
+const Ride = require('../models/Ride');
 
 // Helper to get batch config from database
 const getBatchConfig = async () => {
@@ -39,27 +40,32 @@ const getBatchConfig = async () => {
   return config;
 };
 
-// Helper to generate dummy class entries with past timestamps
-const generateClassEntries = (count, joinedDate) => {
+// Helper to generate dummy checkin entries with past timestamps
+// paidCount determines how many of the oldest entries should be marked as paid
+const generateCheckins = (count, joinedDate, paidCount = 0) => {
   const entries = [];
   const startDate = new Date(joinedDate);
   const now = new Date();
+  const horses = ['Alishan', 'Aslan', 'Timur', 'Heera', 'Clara', 'XLove', 'Baadshah', 'Antilope'];
   
   for (let i = 0; i < count; i++) {
     // Spread entries between joined date and now
     const randomTime = startDate.getTime() + Math.random() * (now.getTime() - startDate.getTime());
     entries.push({
       rideNumber: i + 1,
-      timestamp: new Date(randomTime)
+      checkinTime: new Date(randomTime),
+      horse: horses[Math.floor(Math.random() * horses.length)],
+      paid: false
     });
   }
   
-  // Sort by timestamp
-  entries.sort((a, b) => a.timestamp - b.timestamp);
+  // Sort by checkinTime
+  entries.sort((a, b) => a.checkinTime - b.checkinTime);
   
-  // Re-number rides after sorting
+  // Re-number rides after sorting and mark oldest as paid
   entries.forEach((entry, idx) => {
     entry.rideNumber = idx + 1;
+    entry.paid = idx < paidCount; // First paidCount entries are marked as paid
   });
   
   return entries;
@@ -68,10 +74,12 @@ const generateClassEntries = (count, joinedDate) => {
 // Helper to format rider response
 const formatRider = (rider, batchConfig) => {
   const riderObj = rider.toObject ? rider.toObject() : rider;
+  // Count only unpaid checkins for activeClassesCount
+  const unpaidCheckins = riderObj.checkins?.filter(c => !c.paid) || [];
   return {
     id: riderObj._id,
     ...riderObj,
-    activeClassesCount: riderObj.activeClasses?.length || 0,
+    activeClassesCount: unpaidCheckins.length,
     batchName: batchConfig?.[riderObj.batchType]?.[riderObj.batchIndex]?.name || `Batch ${riderObj.batchIndex + 1}`,
     batchTime: batchConfig?.[riderObj.batchType]?.[riderObj.batchIndex]?.time || ''
   };
@@ -197,7 +205,7 @@ router.post('/', async (req, res) => {
       level: level || 'beginner',
       batchType,
       batchIndex: parseInt(batchIndex),
-      activeClasses: [], // Empty array for new riders
+      checkins: [], // Empty array for new riders
       feesPaid: false,
       joinedDate: new Date().toISOString().split('T')[0]
     });
@@ -256,9 +264,19 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// PATCH check-in rider (add new class entry)
+// PATCH check-in rider (add new checkin record and create a Ride)
 router.patch('/:id/checkin', async (req, res) => {
   try {
+    const { horse } = req.body;
+    
+    // Validate horse selection
+    if (!horse) {
+      return res.status(400).json({
+        success: false,
+        message: 'Horse selection is required'
+      });
+    }
+    
     const rider = await Rider.findById(req.params.id);
     
     if (!rider) {
@@ -268,20 +286,46 @@ router.patch('/:id/checkin', async (req, res) => {
       });
     }
     
-    // Add new class entry
-    const newRideNumber = rider.activeClasses.length + 1;
-    rider.activeClasses.push({
+    const checkinTime = new Date();
+    const newRideNumber = rider.checkins.length + 1;
+    
+    // Get batch config to retrieve batch name
+    const batchConfig = await getBatchConfig();
+    const batchName = batchConfig?.[rider.batchType]?.[rider.batchIndex]?.name || `Batch ${rider.batchIndex + 1}`;
+    
+    // Add checkin record to rider (unpaid by default)
+    rider.checkins.push({
       rideNumber: newRideNumber,
-      timestamp: new Date()
+      checkinTime: checkinTime,
+      horse: horse,
+      paid: false
     });
     
-    const updatedRider = await rider.save();
-    const batchConfig = await getBatchConfig();
+    // Save rider and create Ride in parallel (independent operations)
+    const [updatedRider, savedRide] = await Promise.all([
+      rider.save(),
+      Ride.create({
+        rideTime: checkinTime,
+        riderName: rider.name,
+        riderId: rider._id,
+        riderLevel: rider.level,
+        horse: horse,
+        batchType: rider.batchType,
+        batchName: batchName
+      })
+    ]);
     
     res.json({
       success: true,
       message: 'Check-in successful',
-      data: formatRider(updatedRider, batchConfig)
+      data: formatRider(updatedRider, batchConfig),
+      ride: {
+        id: savedRide._id,
+        rideTime: savedRide.rideTime,
+        riderName: savedRide.riderName,
+        riderLevel: savedRide.riderLevel,
+        horse: savedRide.horse
+      }
     });
   } catch (error) {
     res.status(500).json({
@@ -291,7 +335,7 @@ router.patch('/:id/checkin', async (req, res) => {
   }
 });
 
-// PATCH pay fees (remove first 26 class entries)
+// PATCH pay fees (mark first 26 unpaid checkins as paid)
 router.patch('/:id/pay', async (req, res) => {
   try {
     const rider = await Rider.findById(req.params.id);
@@ -303,19 +347,23 @@ router.patch('/:id/pay', async (req, res) => {
       });
     }
     
-    if (rider.activeClasses.length < 26) {
+    // Count unpaid checkins
+    const unpaidCount = rider.checkins.filter(c => !c.paid).length;
+    
+    if (unpaidCount < 26) {
       return res.status(400).json({
         success: false,
-        message: 'Payment not required. Active classes less than 26.'
+        message: `Payment not required. Only ${unpaidCount} unpaid classes.`
       });
     }
     
-    // Remove first 26 entries (oldest classes)
-    rider.activeClasses = rider.activeClasses.slice(26);
-    
-    // Re-number remaining rides
-    rider.activeClasses.forEach((entry, idx) => {
-      entry.rideNumber = idx + 1;
+    // Mark first 26 unpaid checkins as paid (in chronological order)
+    let paidCount = 0;
+    rider.checkins.forEach(checkin => {
+      if (!checkin.paid && paidCount < 26) {
+        checkin.paid = true;
+        paidCount++;
+      }
     });
     
     const updatedRider = await rider.save();
@@ -323,7 +371,7 @@ router.patch('/:id/pay', async (req, res) => {
     
     res.json({
       success: true,
-      message: 'Payment recorded. 26 classes deducted.',
+      message: 'Payment recorded. 26 classes marked as paid.',
       data: formatRider(updatedRider, batchConfig)
     });
   } catch (error) {
@@ -415,62 +463,93 @@ router.delete('/:id', async (req, res) => {
 });
 
 // POST seed initial data (for development)
+// generateCheckins(totalCheckins, joinedDate, paidCount)
+// paidCount = how many of the oldest checkins are marked as paid
 router.post('/seed', async (req, res) => {
   try {
-    // Clear existing data
-    await Rider.deleteMany({});
+    // Clear existing data (both riders and rides)
+    await Promise.all([
+      Rider.deleteMany({}),
+      Ride.deleteMany({})
+    ]);
     
-    // Initial riders data with activeClasses as array
+    // Initial riders data with checkins array
+    // Format: generateCheckins(totalRides, joinedDate, paidRides)
+    // activeClassesCount = totalRides - paidRides (unpaid checkins)
     const initialRiders = [
       // Morning Batch 1
-      { name: 'Aanya Sharma', age: 14, phone: '+91 98765 43210', email: 'aanya.s@email.com', activeClasses: generateClassEntries(28, '2024-03-15'), level: 'intermediate', joinedDate: '2024-03-15', feesPaid: true, batchType: 'morning', batchIndex: 0 },
-      { name: 'Rohan Kapoor', age: 16, phone: '+91 98765 43211', email: 'rohan.k@email.com', activeClasses: generateClassEntries(32, '2023-11-20'), level: 'advanced', joinedDate: '2023-11-20', feesPaid: true, batchType: 'morning', batchIndex: 0 },
-      { name: 'Priya Malhotra', age: 12, phone: '+91 98765 43212', email: 'priya.m@email.com', activeClasses: generateClassEntries(14, '2025-01-10'), level: 'beginner', joinedDate: '2025-01-10', feesPaid: false, batchType: 'morning', batchIndex: 0 },
-      { name: 'Arjun Singh', age: 15, phone: '+91 98765 43213', email: 'arjun.s@email.com', activeClasses: generateClassEntries(26, '2024-06-22'), level: 'intermediate', joinedDate: '2024-06-22', feesPaid: true, batchType: 'morning', batchIndex: 0 },
-      { name: 'Meera Patel', age: 13, phone: '+91 98765 43214', email: 'meera.p@email.com', activeClasses: generateClassEntries(18, '2025-02-05'), level: 'beginner', joinedDate: '2025-02-05', feesPaid: false, batchType: 'morning', batchIndex: 0 },
+      { name: 'Aanya Sharma', age: 14, phone: '+91 98765 43210', email: 'aanya.s@email.com', checkins: generateCheckins(54, '2024-03-15', 26), level: 'intermediate', gender: 'female', joinedDate: '2024-03-15', feesPaid: true, batchType: 'morning', batchIndex: 0 },
+      { name: 'Rohan Kapoor', age: 16, phone: '+91 98765 43211', email: 'rohan.k@email.com', checkins: generateCheckins(58, '2023-11-20', 26), level: 'advanced', gender: 'male', joinedDate: '2023-11-20', feesPaid: true, batchType: 'morning', batchIndex: 0 },
+      { name: 'Priya Malhotra', age: 12, phone: '+91 98765 43212', email: 'priya.m@email.com', checkins: generateCheckins(14, '2025-01-10', 0), level: 'beginner', gender: 'female', joinedDate: '2025-01-10', feesPaid: false, batchType: 'morning', batchIndex: 0 },
+      { name: 'Arjun Singh', age: 15, phone: '+91 98765 43213', email: 'arjun.s@email.com', checkins: generateCheckins(52, '2024-06-22', 26), level: 'intermediate', gender: 'male', joinedDate: '2024-06-22', feesPaid: true, batchType: 'morning', batchIndex: 0 },
+      { name: 'Meera Patel', age: 13, phone: '+91 98765 43214', email: 'meera.p@email.com', checkins: generateCheckins(18, '2025-02-05', 0), level: 'beginner', gender: 'female', joinedDate: '2025-02-05', feesPaid: false, batchType: 'morning', batchIndex: 0 },
       
       // Morning Batch 2
-      { name: 'Kabir Verma', age: 17, phone: '+91 98765 43215', email: 'kabir.v@email.com', activeClasses: generateClassEntries(30, '2023-08-14'), level: 'advanced', joinedDate: '2023-08-14', feesPaid: true, batchType: 'morning', batchIndex: 1 },
-      { name: 'Ishaan Reddy', age: 14, phone: '+91 98765 43216', email: 'ishaan.r@email.com', activeClasses: generateClassEntries(22, '2024-04-18'), level: 'intermediate', joinedDate: '2024-04-18', feesPaid: true, batchType: 'morning', batchIndex: 1 },
-      { name: 'Tara Gupta', age: 11, phone: '+91 98765 43217', email: 'tara.g@email.com', activeClasses: generateClassEntries(12, '2025-03-01'), level: 'beginner', joinedDate: '2025-03-01', feesPaid: false, batchType: 'morning', batchIndex: 1 },
-      { name: 'Vikram Joshi', age: 16, phone: '+91 98765 43218', email: 'vikram.j@email.com', activeClasses: generateClassEntries(35, '2023-09-25'), level: 'advanced', joinedDate: '2023-09-25', feesPaid: true, batchType: 'morning', batchIndex: 1 },
-      { name: 'Ananya Kumar', age: 13, phone: '+91 98765 43219', email: 'ananya.k@email.com', activeClasses: generateClassEntries(20, '2024-07-30'), level: 'intermediate', joinedDate: '2024-07-30', feesPaid: false, batchType: 'morning', batchIndex: 1 },
+      { name: 'Kabir Verma', age: 17, phone: '+91 98765 43215', email: 'kabir.v@email.com', checkins: generateCheckins(56, '2023-08-14', 26), level: 'advanced', gender: 'male', joinedDate: '2023-08-14', feesPaid: true, batchType: 'morning', batchIndex: 1 },
+      { name: 'Ishaan Reddy', age: 14, phone: '+91 98765 43216', email: 'ishaan.r@email.com', checkins: generateCheckins(22, '2024-04-18', 0), level: 'intermediate', gender: 'male', joinedDate: '2024-04-18', feesPaid: false, batchType: 'morning', batchIndex: 1 },
+      { name: 'Tara Gupta', age: 11, phone: '+91 98765 43217', email: 'tara.g@email.com', checkins: generateCheckins(12, '2025-03-01', 0), level: 'beginner', gender: 'female', joinedDate: '2025-03-01', feesPaid: false, batchType: 'morning', batchIndex: 1 },
+      { name: 'Vikram Joshi', age: 16, phone: '+91 98765 43218', email: 'vikram.j@email.com', checkins: generateCheckins(61, '2023-09-25', 26), level: 'advanced', gender: 'male', joinedDate: '2023-09-25', feesPaid: true, batchType: 'morning', batchIndex: 1 },
+      { name: 'Ananya Kumar', age: 13, phone: '+91 98765 43219', email: 'ananya.k@email.com', checkins: generateCheckins(20, '2024-07-30', 0), level: 'intermediate', gender: 'female', joinedDate: '2024-07-30', feesPaid: false, batchType: 'morning', batchIndex: 1 },
       
       // Morning Batch 3
-      { name: 'Siddharth Rao', age: 15, phone: '+91 98765 43220', email: 'siddharth.r@email.com', activeClasses: generateClassEntries(27, '2024-02-12'), level: 'intermediate', joinedDate: '2024-02-12', feesPaid: true, batchType: 'morning', batchIndex: 2 },
-      { name: 'Nisha Agarwal', age: 12, phone: '+91 98765 43221', email: 'nisha.a@email.com', activeClasses: generateClassEntries(15, '2025-01-28'), level: 'beginner', joinedDate: '2025-01-28', feesPaid: false, batchType: 'morning', batchIndex: 2 },
-      { name: 'Aarav Mehta', age: 18, phone: '+91 98765 43222', email: 'aarav.m@email.com', activeClasses: generateClassEntries(40, '2023-05-17'), level: 'advanced', joinedDate: '2023-05-17', feesPaid: true, batchType: 'morning', batchIndex: 2 },
-      { name: 'Diya Iyer', age: 14, phone: '+91 98765 43223', email: 'diya.i@email.com', activeClasses: generateClassEntries(24, '2024-08-09'), level: 'intermediate', joinedDate: '2024-08-09', feesPaid: true, batchType: 'morning', batchIndex: 2 },
-      { name: 'Karan Bhatia', age: 16, phone: '+91 98765 43224', email: 'karan.b@email.com', activeClasses: generateClassEntries(29, '2023-12-03'), level: 'advanced', joinedDate: '2023-12-03', feesPaid: false, batchType: 'morning', batchIndex: 2 },
+      { name: 'Siddharth Rao', age: 15, phone: '+91 98765 43220', email: 'siddharth.r@email.com', checkins: generateCheckins(53, '2024-02-12', 26), level: 'intermediate', gender: 'male', joinedDate: '2024-02-12', feesPaid: true, batchType: 'morning', batchIndex: 2 },
+      { name: 'Nisha Agarwal', age: 12, phone: '+91 98765 43221', email: 'nisha.a@email.com', checkins: generateCheckins(15, '2025-01-28', 0), level: 'beginner', gender: 'female', joinedDate: '2025-01-28', feesPaid: false, batchType: 'morning', batchIndex: 2 },
+      { name: 'Aarav Mehta', age: 18, phone: '+91 98765 43222', email: 'aarav.m@email.com', checkins: generateCheckins(66, '2023-05-17', 26), level: 'advanced', gender: 'male', joinedDate: '2023-05-17', feesPaid: true, batchType: 'morning', batchIndex: 2 },
+      { name: 'Diya Iyer', age: 14, phone: '+91 98765 43223', email: 'diya.i@email.com', checkins: generateCheckins(24, '2024-08-09', 0), level: 'intermediate', gender: 'female', joinedDate: '2024-08-09', feesPaid: false, batchType: 'morning', batchIndex: 2 },
+      { name: 'Karan Bhatia', age: 16, phone: '+91 98765 43224', email: 'karan.b@email.com', checkins: generateCheckins(29, '2023-12-03', 0), level: 'advanced', gender: 'male', joinedDate: '2023-12-03', feesPaid: false, batchType: 'morning', batchIndex: 2 },
       
       // Evening Batch 1
-      { name: 'Riya Desai', age: 13, phone: '+91 98765 43225', email: 'riya.d@email.com', activeClasses: generateClassEntries(16, '2025-02-20'), level: 'beginner', joinedDate: '2025-02-20', feesPaid: true, batchType: 'evening', batchIndex: 0 },
-      { name: 'Aditya Nair', age: 17, phone: '+91 98765 43226', email: 'aditya.n@email.com', activeClasses: generateClassEntries(38, '2023-07-11'), level: 'advanced', joinedDate: '2023-07-11', feesPaid: true, batchType: 'evening', batchIndex: 0 },
-      { name: 'Pooja Saxena', age: 15, phone: '+91 98765 43227', email: 'pooja.s@email.com', activeClasses: generateClassEntries(26, '2024-05-06'), level: 'intermediate', joinedDate: '2024-05-06', feesPaid: false, batchType: 'evening', batchIndex: 0 },
-      { name: 'Rahul Choudhury', age: 14, phone: '+91 98765 43228', email: 'rahul.c@email.com', activeClasses: generateClassEntries(21, '2024-09-14'), level: 'intermediate', joinedDate: '2024-09-14', feesPaid: true, batchType: 'evening', batchIndex: 0 },
-      { name: 'Sneha Pillai', age: 12, phone: '+91 98765 43229', email: 'sneha.p@email.com', activeClasses: generateClassEntries(10, '2025-03-08'), level: 'beginner', joinedDate: '2025-03-08', feesPaid: false, batchType: 'evening', batchIndex: 0 },
+      { name: 'Riya Desai', age: 13, phone: '+91 98765 43225', email: 'riya.d@email.com', checkins: generateCheckins(16, '2025-02-20', 0), level: 'beginner', gender: 'female', joinedDate: '2025-02-20', feesPaid: false, batchType: 'evening', batchIndex: 0 },
+      { name: 'Aditya Nair', age: 17, phone: '+91 98765 43226', email: 'aditya.n@email.com', checkins: generateCheckins(64, '2023-07-11', 26), level: 'advanced', gender: 'male', joinedDate: '2023-07-11', feesPaid: true, batchType: 'evening', batchIndex: 0 },
+      { name: 'Pooja Saxena', age: 15, phone: '+91 98765 43227', email: 'pooja.s@email.com', checkins: generateCheckins(26, '2024-05-06', 0), level: 'intermediate', gender: 'female', joinedDate: '2024-05-06', feesPaid: false, batchType: 'evening', batchIndex: 0 },
+      { name: 'Rahul Choudhury', age: 14, phone: '+91 98765 43228', email: 'rahul.c@email.com', checkins: generateCheckins(21, '2024-09-14', 0), level: 'intermediate', gender: 'male', joinedDate: '2024-09-14', feesPaid: false, batchType: 'evening', batchIndex: 0 },
+      { name: 'Sneha Pillai', age: 12, phone: '+91 98765 43229', email: 'sneha.p@email.com', checkins: generateCheckins(10, '2025-03-08', 0), level: 'beginner', gender: 'female', joinedDate: '2025-03-08', feesPaid: false, batchType: 'evening', batchIndex: 0 },
       
       // Evening Batch 2
-      { name: 'Nikhil Menon', age: 16, phone: '+91 98765 43230', email: 'nikhil.m@email.com', activeClasses: generateClassEntries(33, '2023-10-22'), level: 'advanced', joinedDate: '2023-10-22', feesPaid: true, batchType: 'evening', batchIndex: 1 },
-      { name: 'Kavya Shah', age: 13, phone: '+91 98765 43231', email: 'kavya.s@email.com', activeClasses: generateClassEntries(19, '2024-06-15'), level: 'intermediate', joinedDate: '2024-06-15', feesPaid: true, batchType: 'evening', batchIndex: 1 },
-      { name: 'Harsh Trivedi', age: 15, phone: '+91 98765 43232', email: 'harsh.t@email.com', activeClasses: generateClassEntries(28, '2024-03-28'), level: 'intermediate', joinedDate: '2024-03-28', feesPaid: false, batchType: 'evening', batchIndex: 1 },
-      { name: 'Simran Kaur', age: 11, phone: '+91 98765 43233', email: 'simran.k@email.com', activeClasses: generateClassEntries(8, '2025-01-05'), level: 'beginner', joinedDate: '2025-01-05', feesPaid: true, batchType: 'evening', batchIndex: 1 },
-      { name: 'Dev Pandey', age: 18, phone: '+91 98765 43234', email: 'dev.p@email.com', activeClasses: generateClassEntries(45, '2023-06-19'), level: 'advanced', joinedDate: '2023-06-19', feesPaid: true, batchType: 'evening', batchIndex: 1 },
+      { name: 'Nikhil Menon', age: 16, phone: '+91 98765 43230', email: 'nikhil.m@email.com', checkins: generateCheckins(59, '2023-10-22', 26), level: 'advanced', gender: 'male', joinedDate: '2023-10-22', feesPaid: true, batchType: 'evening', batchIndex: 1 },
+      { name: 'Kavya Shah', age: 13, phone: '+91 98765 43231', email: 'kavya.s@email.com', checkins: generateCheckins(19, '2024-06-15', 0), level: 'intermediate', gender: 'female', joinedDate: '2024-06-15', feesPaid: false, batchType: 'evening', batchIndex: 1 },
+      { name: 'Harsh Trivedi', age: 15, phone: '+91 98765 43232', email: 'harsh.t@email.com', checkins: generateCheckins(28, '2024-03-28', 0), level: 'intermediate', gender: 'male', joinedDate: '2024-03-28', feesPaid: false, batchType: 'evening', batchIndex: 1 },
+      { name: 'Simran Kaur', age: 11, phone: '+91 98765 43233', email: 'simran.k@email.com', checkins: generateCheckins(8, '2025-01-05', 0), level: 'beginner', gender: 'female', joinedDate: '2025-01-05', feesPaid: false, batchType: 'evening', batchIndex: 1 },
+      { name: 'Dev Pandey', age: 18, phone: '+91 98765 43234', email: 'dev.p@email.com', checkins: generateCheckins(71, '2023-06-19', 26), level: 'advanced', gender: 'male', joinedDate: '2023-06-19', feesPaid: true, batchType: 'evening', batchIndex: 1 },
       
       // Evening Batch 3
-      { name: 'Zara Khan', age: 14, phone: '+91 98765 43235', email: 'zara.k@email.com', activeClasses: generateClassEntries(23, '2024-04-02'), level: 'intermediate', joinedDate: '2024-04-02', feesPaid: false, batchType: 'evening', batchIndex: 2 },
-      { name: 'Yash Oberoi', age: 17, phone: '+91 98765 43236', email: 'yash.o@email.com', activeClasses: generateClassEntries(31, '2023-08-30'), level: 'advanced', joinedDate: '2023-08-30', feesPaid: true, batchType: 'evening', batchIndex: 2 },
-      { name: 'Aditi Bhatt', age: 12, phone: '+91 98765 43237', email: 'aditi.b@email.com', activeClasses: generateClassEntries(11, '2025-02-14'), level: 'beginner', joinedDate: '2025-02-14', feesPaid: false, batchType: 'evening', batchIndex: 2 },
-      { name: 'Vihaan Khanna', age: 15, phone: '+91 98765 43238', email: 'vihaan.k@email.com', activeClasses: generateClassEntries(26, '2024-07-21'), level: 'intermediate', joinedDate: '2024-07-21', feesPaid: true, batchType: 'evening', batchIndex: 2 },
-      { name: 'Anvi Sinha', age: 13, phone: '+91 98765 43239', email: 'anvi.s@email.com', activeClasses: generateClassEntries(17, '2025-03-12'), level: 'beginner', joinedDate: '2025-03-12', feesPaid: false, batchType: 'evening', batchIndex: 2 },
+      { name: 'Zara Khan', age: 14, phone: '+91 98765 43235', email: 'zara.k@email.com', checkins: generateCheckins(23, '2024-04-02', 0), level: 'intermediate', gender: 'female', joinedDate: '2024-04-02', feesPaid: false, batchType: 'evening', batchIndex: 2 },
+      { name: 'Yash Oberoi', age: 17, phone: '+91 98765 43236', email: 'yash.o@email.com', checkins: generateCheckins(57, '2023-08-30', 26), level: 'advanced', gender: 'male', joinedDate: '2023-08-30', feesPaid: true, batchType: 'evening', batchIndex: 2 },
+      { name: 'Aditi Bhatt', age: 12, phone: '+91 98765 43237', email: 'aditi.b@email.com', checkins: generateCheckins(11, '2025-02-14', 0), level: 'beginner', gender: 'female', joinedDate: '2025-02-14', feesPaid: false, batchType: 'evening', batchIndex: 2 },
+      { name: 'Vihaan Khanna', age: 15, phone: '+91 98765 43238', email: 'vihaan.k@email.com', checkins: generateCheckins(52, '2024-07-21', 26), level: 'intermediate', gender: 'male', joinedDate: '2024-07-21', feesPaid: true, batchType: 'evening', batchIndex: 2 },
+      { name: 'Anvi Sinha', age: 13, phone: '+91 98765 43239', email: 'anvi.s@email.com', checkins: generateCheckins(17, '2025-03-12', 0), level: 'beginner', gender: 'female', joinedDate: '2025-03-12', feesPaid: false, batchType: 'evening', batchIndex: 2 },
     ];
     
     const riders = await Rider.insertMany(initialRiders);
     
+    // Get batch config for batch names
+    const batchConfig = await getBatchConfig();
+    
+    // Create Ride documents for each rider's checkins
+    const rideDocuments = [];
+    riders.forEach(rider => {
+      const batchName = batchConfig?.[rider.batchType]?.[rider.batchIndex]?.name || `Batch ${rider.batchIndex + 1}`;
+      
+      rider.checkins.forEach(checkin => {
+        rideDocuments.push({
+          rideTime: checkin.checkinTime,
+          riderName: rider.name,
+          riderId: rider._id,
+          riderLevel: rider.level,
+          horse: checkin.horse,
+          batchType: rider.batchType,
+          batchName: batchName
+        });
+      });
+    });
+    
+    // Insert all ride documents
+    const rides = await Ride.insertMany(rideDocuments);
+    
     res.status(201).json({
       success: true,
-      message: `Seeded ${riders.length} riders successfully`,
-      count: riders.length
+      message: `Seeded ${riders.length} riders and ${rides.length} rides successfully`,
+      count: { riders: riders.length, rides: rides.length }
     });
   } catch (error) {
     res.status(500).json({

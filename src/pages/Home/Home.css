@@ -1,4 +1,27 @@
 /* ===========================
+   App Container - Prevent Horizontal Scroll
+   =========================== */
+.app {
+  overflow-x: hidden;
+  width: 100%;
+  max-width: 100vw;
+  min-width: 0;
+}
+
+/* All sections should be full width and responsive */
+.hero,
+.about,
+.services,
+.gallery,
+.testimonial,
+.contact,
+.footer {
+  width: 100%;
+  max-width: 100vw;
+  box-sizing: border-box;
+}
+
+/* ===========================
    Navigation
    =========================== */
 .nav {
@@ -233,7 +256,7 @@
 .btn {
   display: inline-block;
   padding: 1rem 2.25rem;
-  font-family: var(--font-body);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   font-size: 0.95rem;
   font-weight: 500;
   text-decoration: none;
@@ -427,7 +450,7 @@
 
 .services__grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
   gap: 2rem;
   margin-top: 4rem;
 }
@@ -552,6 +575,7 @@
   background: linear-gradient(135deg, var(--color-forest) 0%, var(--color-espresso) 100%);
   position: relative;
   overflow: hidden;
+  max-width: 100vw;
 }
 
 .testimonial::before {
@@ -560,9 +584,10 @@
   top: -50px;
   left: 5%;
   font-family: var(--font-display);
-  font-size: 40rem;
+  font-size: clamp(10rem, 30vw, 40rem);
   color: rgba(255, 255, 255, 0.03);
   line-height: 1;
+  pointer-events: none;
 }
 
 .testimonial__container {
@@ -666,7 +691,7 @@
 .form-group textarea {
   width: 100%;
   padding: 1rem 1.25rem;
-  font-family: var(--font-body);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   font-size: 1rem;
   border: 2px solid var(--color-tan);
   border-radius: 12px;
@@ -776,8 +801,29 @@
 }
 
 @media (max-width: 768px) {
+  .nav {
+    padding: 1rem 1rem;
+  }
+  
+  .nav__logo-text {
+    font-size: 1.25rem;
+  }
+  
   .nav__links {
     display: none;
+  }
+  
+  .hero__content {
+    padding: 0 1rem;
+  }
+  
+  .hero__title-line {
+    font-size: 2.5rem;
+  }
+  
+  .hero__subtitle {
+    font-size: 1rem;
+    padding: 0 0.5rem;
   }
   
   .hero__cta {
@@ -796,7 +842,11 @@
   .gallery,
   .testimonial,
   .contact {
-    padding: 5rem 1.5rem;
+    padding: 4rem 1rem;
+  }
+  
+  .section-title {
+    font-size: 2rem;
   }
   
   .about__stats {
@@ -815,12 +865,139 @@
   }
   
   .contact__form {
-    padding: 2rem;
+    padding: 1.5rem;
+  }
+  
+  .footer {
+    padding: 3rem 1rem;
+    padding-bottom: 100px; /* Space for mobile nav */
   }
   
   .footer__links {
     flex-wrap: wrap;
     gap: 1rem;
+  }
+}
+
+/* ===========================
+   Mobile Bottom Navigation
+   =========================== */
+.mobile-nav {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 9999;
+  background: var(--color-cream);
+  border-top: 1px solid rgba(44, 24, 16, 0.15);
+  box-shadow: 0 -4px 20px rgba(44, 24, 16, 0.15);
+  padding: 0.5rem 0;
+  padding-bottom: calc(0.5rem + env(safe-area-inset-bottom));
+}
+
+@media (max-width: 768px) {
+  .mobile-nav {
+    display: flex;
+  }
+  
+  .mobile-nav__item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 0.5rem 0.25rem;
+    text-decoration: none;
+    color: var(--color-espresso);
+    opacity: 0.6;
+    transition: all 0.2s ease;
+  }
+  
+  .mobile-nav__item.active {
+    opacity: 1;
+    color: var(--color-chestnut);
+  }
+  
+  .mobile-nav__item:active {
+    transform: scale(0.95);
+  }
+  
+  .mobile-nav__icon {
+    font-size: 1.25rem;
+    margin-bottom: 0.2rem;
+  }
+  
+  .mobile-nav__label {
+    font-size: 0.65rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  
+  .mobile-nav__item.active .mobile-nav__icon {
+    transform: scale(1.1);
+  }
+  
+  .mobile-nav__item.active .mobile-nav__label {
+    font-weight: 600;
+    color: var(--color-chestnut);
+  }
+}
+
+/* Extra small screens */
+@media (max-width: 480px) {
+  .nav {
+    padding: 0.75rem 0.75rem;
+  }
+  
+  .nav__logo-icon {
+    font-size: 1.5rem;
+  }
+  
+  .nav__logo-text {
+    font-size: 1.1rem;
+  }
+  
+  .hero__title-line {
+    font-size: 2rem;
+  }
+  
+  .hero__subtitle {
+    font-size: 0.9rem;
+  }
+  
+  .section-title {
+    font-size: 1.75rem;
+  }
+  
+  .section-tag {
+    font-size: 0.75rem;
+  }
+  
+  .about,
+  .services,
+  .gallery,
+  .testimonial,
+  .contact {
+    padding: 3rem 0.75rem;
+  }
+  
+  .footer {
+    padding: 2rem 0.75rem;
+    padding-bottom: 90px;
+  }
+  
+  .contact__form {
+    padding: 1rem;
+  }
+  
+  .mobile-nav__label {
+    font-size: 0.55rem;
+  }
+  
+  .mobile-nav__icon {
+    font-size: 1.1rem;
   }
 }
 

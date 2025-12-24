@@ -52,7 +52,7 @@ npm run preview
 ```
 equine-enclave/
 ├── public/
-│   └── horse.svg          # Favicon
+│   └── logo.png          # Favicon
 ├── src/
 │   ├── App.tsx            # Main app component
 │   ├── App.css            # App styles

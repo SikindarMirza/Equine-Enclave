@@ -1,8 +1,47 @@
-import { useState, useEffect } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useState, useEffect, ReactNode } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { jsPDF } from 'jspdf'
+import CalendarMonthIcon from '@mui/icons-material/CalendarMonth'
+import SchoolIcon from '@mui/icons-material/School'
+import DashboardIcon from '@mui/icons-material/Dashboard'
+import EventNoteIcon from '@mui/icons-material/EventNote'
+import PeopleIcon from '@mui/icons-material/People'
+import BarChartIcon from '@mui/icons-material/BarChart'
+import SettingsIcon from '@mui/icons-material/Settings'
+import EditIcon from '@mui/icons-material/Edit'
+import WbSunnyIcon from '@mui/icons-material/WbSunny'
+import NightsStayIcon from '@mui/icons-material/NightsStay'
 import './AdminDashboard.css'
 
-const API_BASE_URL = 'http://localhost:3001/api'
+// Horse Icon Image Component
+const HorseIcon = ({ size = 32 }: { size?: number }) => (
+  <img 
+    src="/horse-icon.png" 
+    alt="Horse" 
+    style={{ 
+      width: size, 
+      height: size, 
+      objectFit: 'cover',
+      borderRadius: '50%'
+    }} 
+  />
+)
+
+// Rider Icon Image Component
+const RiderIcon = ({ size = 32 }: { size?: number }) => (
+  <img 
+    src="/rider-icon.png" 
+    alt="Rider" 
+    style={{ 
+      width: size, 
+      height: size, 
+      objectFit: 'cover',
+      borderRadius: '50%'
+    }} 
+  />
+)
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:3001/api' : '/api')
 
 interface AdminUser {
   id: string
@@ -16,7 +55,7 @@ interface StatCard {
   title: string
   value: string | number
   change: string
-  icon: string
+  icon: ReactNode
   trend: 'up' | 'down' | 'neutral'
 }
 
@@ -40,9 +79,11 @@ interface Horse {
   notes: string
 }
 
-interface ClassEntry {
+interface CheckinRecord {
   rideNumber: number
-  timestamp: string
+  checkinTime: string
+  horse: string
+  paid: boolean
 }
 
 interface Rider {
@@ -52,9 +93,10 @@ interface Rider {
   age: number
   phone: string
   email: string
-  activeClasses: ClassEntry[]
+  checkins: CheckinRecord[]
   activeClassesCount: number
   level: 'beginner' | 'intermediate' | 'advanced'
+  gender: 'male' | 'female'
   joinedDate: string
   feesPaid: boolean
   batchType?: 'morning' | 'evening'
@@ -69,10 +111,16 @@ interface Batch {
   riders: Rider[]
 }
 
+interface Toast {
+  id: number
+  message: string
+  type: 'success' | 'error'
+}
+
 function AdminDashboard() {
   const navigate = useNavigate()
   const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [adminUser, setAdminUser] = useState<AdminUser | null>(null)
+  const [, setAdminUser] = useState<AdminUser | null>(null)
   const [authChecking, setAuthChecking] = useState(true)
   const [activeTab, setActiveTab] = useState('overview')
   const [expandedBatches, setExpandedBatches] = useState<string[]>(['morning-batch1', 'evening-batch1'])
@@ -115,7 +163,14 @@ function AdminDashboard() {
     rider: Rider | null;
     batchType: 'morning' | 'evening';
     batchIndex: number;
-  }>({ isOpen: false, rider: null, batchType: 'morning', batchIndex: 0 })
+    selectedHorse: string;
+  }>({ isOpen: false, rider: null, batchType: 'morning', batchIndex: 0, selectedHorse: '' })
+  const [horseDropdownOpen, setHorseDropdownOpen] = useState(false)
+  const [levelDropdownOpen, setLevelDropdownOpen] = useState(false)
+  const [editLevelDropdownOpen, setEditLevelDropdownOpen] = useState(false)
+  const [reportsHorseDropdownOpen, setReportsHorseDropdownOpen] = useState(false)
+  const [genderDropdownOpen, setGenderDropdownOpen] = useState(false)
+  const [editGenderDropdownOpen, setEditGenderDropdownOpen] = useState(false)
   
   const [deleteModal, setDeleteModal] = useState<{
     isOpen: boolean;
@@ -136,7 +191,8 @@ function AdminDashboard() {
     age: '',
     phone: '',
     email: '',
-    level: 'beginner' as 'beginner' | 'intermediate' | 'advanced'
+    level: 'beginner' as 'beginner' | 'intermediate' | 'advanced',
+    gender: 'male' as 'male' | 'female'
   })
   const [newRider, setNewRider] = useState({
     name: '',
@@ -144,20 +200,57 @@ function AdminDashboard() {
     phone: '',
     email: '',
     level: 'beginner' as 'beginner' | 'intermediate' | 'advanced',
+    gender: 'male' as 'male' | 'female',
     batchType: 'morning' as 'morning' | 'evening',
     batchIndex: 0
   })
   
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  
+  // Toast notifications
+  const [toasts, setToasts] = useState<Toast[]>([])
+  
+  const showToast = (message: string, type: 'success' | 'error') => {
+    const id = Date.now()
+    setToasts(prev => [...prev, { id, message, type }])
+    // Auto remove after 4 seconds
+    setTimeout(() => {
+      setToasts(prev => prev.filter(toast => toast.id !== id))
+    }, 4000)
+  }
+  
+  const removeToast = (id: number) => {
+    setToasts(prev => prev.filter(toast => toast.id !== id))
+  }
+  
+  // Form validation errors
+  const [formErrors, setFormErrors] = useState<{
+    addBatch: { name?: string; time?: string };
+    addRider: { name?: string; age?: string; phone?: string };
+    editRider: { name?: string; age?: string; phone?: string };
+    editBatch: { name?: string; time?: string };
+    checkin: { horse?: string };
+  }>({
+    addBatch: {},
+    addRider: {},
+    editRider: {},
+    editBatch: {},
+    checkin: {}
+  })
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<Array<Rider & { batchName: string; batchLabel: string }>>([])
   const [showSearchResults, setShowSearchResults] = useState(false)
   const [selectedRiderId, setSelectedRiderId] = useState<string | null>(null)
   const [tableSearchFilter, setTableSearchFilter] = useState('')
+  const [maxPersonsDropdownOpen, setMaxPersonsDropdownOpen] = useState(false)
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
     const savedTheme = localStorage.getItem('admin-theme')
     return (savedTheme as 'dark' | 'light') || 'dark'
+  })
+  const [maxPersonsPerBatch, setMaxPersonsPerBatch] = useState<number>(() => {
+    const saved = localStorage.getItem('max-persons-per-batch')
+    return saved ? parseInt(saved) : 5
   })
 
   // Theme toggle handler
@@ -165,6 +258,17 @@ function AdminDashboard() {
     const newTheme = theme === 'dark' ? 'light' : 'dark'
     setTheme(newTheme)
     localStorage.setItem('admin-theme', newTheme)
+  }
+
+  // Max persons per batch handler
+  const handleMaxPersonsChange = (value: number) => {
+    setMaxPersonsPerBatch(value)
+    localStorage.setItem('max-persons-per-batch', value.toString())
+  }
+
+  // Check if batch is full
+  const isBatchFull = (batch: Batch) => {
+    return batch.riders.length >= maxPersonsPerBatch
   }
 
   // Check authentication on mount
@@ -175,7 +279,7 @@ function AdminDashboard() {
 
       if (!token || !storedUser) {
         setAuthChecking(false)
-        navigate('/admin-login')
+        navigate('/login')
         return
       }
 
@@ -195,7 +299,7 @@ function AdminDashboard() {
           // Token invalid, clear and redirect
           localStorage.removeItem('admin-token')
           localStorage.removeItem('admin-user')
-          navigate('/admin-login')
+          navigate('/login')
         }
       } catch (err) {
         console.error('Auth check failed:', err)
@@ -205,7 +309,7 @@ function AdminDashboard() {
           setIsAuthenticated(true)
           setAdminUser(user)
         } catch {
-          navigate('/admin-login')
+          navigate('/login')
         }
       } finally {
         setAuthChecking(false)
@@ -215,13 +319,41 @@ function AdminDashboard() {
     checkAuth()
   }, [navigate])
 
+  // Lock body scroll when any modal is open
+  useEffect(() => {
+    const isAnyModalOpen = 
+      paymentModal.isOpen || 
+      addRiderModal || 
+      checkinModal.isOpen || 
+      deleteModal.isOpen || 
+      editRiderModal.isOpen || 
+      assignBatchModal.isOpen || 
+      editBatchModal.isOpen || 
+      addBatchModal.isOpen || 
+      deleteBatchModal.isOpen
+
+    if (isAnyModalOpen) {
+      // Save scroll position and lock body
+      const scrollY = window.scrollY
+      document.documentElement.style.setProperty('--scroll-y', `${scrollY}px`)
+      document.body.classList.add('modal-open')
+    } else {
+      // Restore scroll position
+      document.body.classList.remove('modal-open')
+      const scrollY = document.documentElement.style.getPropertyValue('--scroll-y')
+      if (scrollY) {
+        window.scrollTo(0, parseInt(scrollY || '0'))
+      }
+    }
+  }, [paymentModal.isOpen, addRiderModal, checkinModal.isOpen, deleteModal.isOpen, editRiderModal.isOpen, assignBatchModal.isOpen, editBatchModal.isOpen, addBatchModal.isOpen, deleteBatchModal.isOpen])
+
   // Logout handler
   const handleLogout = () => {
     localStorage.removeItem('admin-token')
     localStorage.removeItem('admin-user')
     setIsAuthenticated(false)
     setAdminUser(null)
-    navigate('/admin-login')
+    navigate('/login')
   }
 
   // Search handler
@@ -308,6 +440,18 @@ function AdminDashboard() {
   const handleSaveBatchTiming = async () => {
     const { batchType, batchIndex, name, time } = editBatchModal
     
+    // Validate fields
+    const errors: { name?: string; time?: string } = {}
+    if (!name.trim()) errors.name = 'Batch name is required'
+    if (!time.trim()) errors.time = 'Timing is required'
+    
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(prev => ({ ...prev, editBatch: errors }))
+      return
+    }
+    
+    setFormErrors(prev => ({ ...prev, editBatch: {} }))
+    setLoading(true)
     try {
       const response = await fetch(`${API_BASE_URL}/batches/by-type/${batchType}/${batchIndex}`, {
         method: 'PUT',
@@ -317,14 +461,18 @@ function AdminDashboard() {
       const result = await response.json()
       
       if (result.success) {
+        const batchName = name
         await fetchBatches() // Refresh data
         setEditBatchModal({ isOpen: false, batchType: 'morning', batchIndex: 0, name: '', time: '' })
+        showToast(`${batchName} timing updated!`, 'success')
       } else {
-        alert(result.message || 'Failed to update batch timing')
+        setLoading(false)
+        showToast(result.message || 'Failed to update batch timing', 'error')
       }
     } catch (err) {
       console.error('Error updating batch timing:', err)
-      alert('Failed to update batch timing')
+      setLoading(false)
+      showToast('Failed to update batch timing', 'error')
     }
   }
 
@@ -332,11 +480,18 @@ function AdminDashboard() {
   const handleAddBatch = async () => {
     const { batchType, name, time } = addBatchModal
     
-    if (!name || !time) {
-      alert('Please fill in all fields')
+    // Validate fields
+    const errors: { name?: string; time?: string } = {}
+    if (!name.trim()) errors.name = 'Batch name is required'
+    if (!time.trim()) errors.time = 'Timing is required'
+    
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(prev => ({ ...prev, addBatch: errors }))
       return
     }
     
+    setFormErrors(prev => ({ ...prev, addBatch: {} }))
+    setLoading(true)
     try {
       const response = await fetch(`${API_BASE_URL}/batches`, {
         method: 'POST',
@@ -346,24 +501,31 @@ function AdminDashboard() {
       const result = await response.json()
       
       if (result.success) {
+        const batchName = name
         await fetchBatches() // Refresh data
         setAddBatchModal({ isOpen: false, batchType: 'morning', name: '', time: '' })
+        showToast(`${batchName} created successfully!`, 'success')
       } else {
-        alert(result.message || 'Failed to add batch')
+        setLoading(false)
+        showToast(result.message || 'Failed to add batch', 'error')
       }
     } catch (err) {
       console.error('Error adding batch:', err)
-      alert('Failed to add batch')
+      setLoading(false)
+      showToast('Failed to add batch', 'error')
     }
   }
 
   // Function to delete batch
   const handleDeleteBatch = async () => {
     if (!deleteBatchModal.batch?._id) {
-      alert('Cannot delete batch - missing batch ID')
+      showToast('Cannot delete batch - missing batch ID', 'error')
       return
     }
     
+    const batchName = deleteBatchModal.batch.name
+    
+    setLoading(true)
     try {
       const response = await fetch(`${API_BASE_URL}/batches/${deleteBatchModal.batch._id}`, {
         method: 'DELETE'
@@ -373,12 +535,15 @@ function AdminDashboard() {
       if (result.success) {
         await fetchBatches() // Refresh data
         setDeleteBatchModal({ isOpen: false, batch: null, batchType: 'morning' })
+        showToast(`${batchName} deleted successfully!`, 'success')
       } else {
-        alert(result.message || 'Failed to delete batch')
+        setLoading(false)
+        showToast(result.message || 'Failed to delete batch', 'error')
       }
     } catch (err) {
       console.error('Error deleting batch:', err)
-      alert('Failed to delete batch')
+      setLoading(false)
+      showToast('Failed to delete batch', 'error')
     }
   }
 
@@ -403,16 +568,39 @@ function AdminDashboard() {
     }
   }
 
+  // Fetch rides for reports
+  const fetchRides = async () => {
+    try {
+      setReportsLoading(true)
+      const response = await fetch(`${API_BASE_URL}/rides?limit=1000`)
+      const result = await response.json()
+      
+      if (result.success) {
+        setAllRides(result.data)
+      }
+    } catch (err) {
+      console.error('Error fetching rides:', err)
+    } finally {
+      setReportsLoading(false)
+    }
+  }
+
   // Fetch data on component mount
   useEffect(() => {
     fetchBatches()
   }, [])
+  
+  // Fetch rides when reports tab is active
+  useEffect(() => {
+    if (activeTab === 'reports' && allRides.length === 0) {
+      fetchRides()
+    }
+  }, [activeTab])
 
   const stats: StatCard[] = [
-    { title: 'Total Horses', value: 8, change: '+1 this month', icon: '🐴', trend: 'up' },
-    { title: 'Active Bookings', value: 23, change: '+5 this week', icon: '📅', trend: 'up' },
-    { title: 'Revenue (MTD)', value: '$34,250', change: '+12% vs last month', icon: '💰', trend: 'up' },
-    { title: 'Lesson Hours', value: 156, change: '-3% vs last month', icon: '📚', trend: 'down' },
+    { title: 'Total Horses', value: 8, change: '+1 this month', icon: <HorseIcon size={32} />, trend: 'up' },
+    { title: 'Active Bookings', value: 23, change: '+5 this week', icon: <CalendarMonthIcon sx={{ fontSize: 32, color: '#d4af37' }} />, trend: 'up' },
+    { title: 'Lesson Hours', value: 156, change: '-3% vs last month', icon: <SchoolIcon sx={{ fontSize: 32, color: '#d4af37' }} />, trend: 'down' },
   ]
 
   const recentBookings: Booking[] = [
@@ -424,19 +612,48 @@ function AdminDashboard() {
   ]
 
   const horses: Horse[] = [
-    { id: 1, name: 'Alishan', breed: 'Arabian', age: 7, color: 'Bay', stall: 'A-01', status: 'healthy', lastCheckup: '2025-12-01', notes: 'Excellent condition, very energetic' },
+    { id: 1, name: 'Alishan', breed: 'Marwari', age: 7, color: 'Bay', stall: 'A-01', status: 'healthy', lastCheckup: '2025-12-01', notes: 'Excellent condition, very energetic' },
     { id: 2, name: 'Aslan', breed: 'Thoroughbred', age: 5, color: 'Chestnut', stall: 'A-02', status: 'healthy', lastCheckup: '2025-11-28', notes: 'Great for training sessions' },
-    { id: 3, name: 'Timur', breed: 'Akhal-Teke', age: 8, color: 'Golden', stall: 'A-03', status: 'healthy', lastCheckup: '2025-12-05', notes: 'Show horse, competition ready' },
+    { id: 3, name: 'Timur', breed: 'Thoroughbred', age: 8, color: 'Golden', stall: 'A-03', status: 'healthy', lastCheckup: '2025-12-05', notes: 'Show horse, competition ready' },
     { id: 4, name: 'Heera', breed: 'Marwari', age: 6, color: 'White', stall: 'B-01', status: 'attention', lastCheckup: '2025-12-08', notes: 'Minor leg strain, light exercise only' },
-    { id: 5, name: 'Clara', breed: 'Hanoverian', age: 4, color: 'Black', stall: 'B-02', status: 'healthy', lastCheckup: '2025-12-03', notes: 'Young and spirited, great potential' },
-    { id: 6, name: 'XLove', breed: 'Dutch Warmblood', age: 9, color: 'Dark Bay', stall: 'B-03', status: 'healthy', lastCheckup: '2025-11-30', notes: 'Experienced jumper, calm temperament' },
-    { id: 7, name: 'Baadshah', breed: 'Friesian', age: 10, color: 'Black', stall: 'C-01', status: 'treatment', lastCheckup: '2025-12-09', notes: 'Recovering from cold, on medication' },
-    { id: 8, name: 'Antilope', breed: 'Lusitano', age: 6, color: 'Grey', stall: 'C-02', status: 'healthy', lastCheckup: '2025-12-02', notes: 'Dressage specialist, very graceful' },
+    { id: 5, name: 'Clara', breed: 'Marwari', age: 4, color: 'Black', stall: 'B-02', status: 'healthy', lastCheckup: '2025-12-03', notes: 'Young and spirited, great potential' },
+    { id: 6, name: 'XLove', breed: 'Thoroughbred', age: 9, color: 'Dark Bay', stall: 'B-03', status: 'healthy', lastCheckup: '2025-11-30', notes: 'Experienced jumper, calm temperament' },
+    { id: 7, name: 'Baadshah', breed: 'Marwari', age: 10, color: 'Black', stall: 'C-01', status: 'treatment', lastCheckup: '2025-12-09', notes: 'Recovering from cold, on medication' },
+    { id: 8, name: 'Antilope', breed: 'Thoroughbred', age: 6, color: 'Grey', stall: 'C-02', status: 'healthy', lastCheckup: '2025-12-02', notes: 'Dressage specialist, very graceful' },
+    { id: 9, name: 'Virat', breed: 'Marwari', age: 7, color: 'Bay', stall: 'A-01', status: 'healthy', lastCheckup: '2025-12-01', notes: 'Excellent condition, very energetic' },
   ]
 
   const [morningBatches, setMorningBatches] = useState<Batch[]>([])
 
   const [eveningBatches, setEveningBatches] = useState<Batch[]>([])
+
+  // Reports state
+  interface RideRecord {
+    _id: string
+    rideTime: string
+    riderName: string
+    riderId: string
+    riderLevel: 'beginner' | 'intermediate' | 'advanced'
+    horse: string
+    batchType: string
+    batchName: string
+  }
+  
+  interface HorseAnalytics {
+    horseName: string
+    totalRides: number
+    beginnerRides: number
+    intermediateRides: number
+    advancedRides: number
+    totalHours: number
+    beginnerHours: number
+    intermediateHours: number
+    advancedHours: number
+  }
+  
+  const [allRides, setAllRides] = useState<RideRecord[]>([])
+  const [selectedReportHorse, setSelectedReportHorse] = useState<string>('')
+  const [reportsLoading, setReportsLoading] = useState(false)
 
   // Helper function to check if rider needs to pay (activeClassesCount >= 26)
   const needsToPay = (rider: Rider) => rider.activeClassesCount >= 26
@@ -448,6 +665,178 @@ function AdminDashboard() {
     const month = months[date.getMonth()]
     const year = date.getFullYear()
     return `${month}${year}`
+  }
+
+  // Check if rider is currently in session (last check-in < 45 minutes ago)
+  const isRiderInSession = (rider: Rider) => {
+    if (!rider.checkins || rider.checkins.length === 0) return false
+    
+    // Get the most recent check-in (unpaid ones first, then by time)
+    const unpaidCheckins = rider.checkins.filter(c => !c.paid)
+    if (unpaidCheckins.length === 0) return false
+    
+    // Sort by checkin time descending to get the latest
+    const sortedCheckins = [...unpaidCheckins].sort((a, b) => 
+      new Date(b.checkinTime).getTime() - new Date(a.checkinTime).getTime()
+    )
+    
+    const lastCheckin = sortedCheckins[0]
+    const lastCheckinTime = new Date(lastCheckin.checkinTime).getTime()
+    const now = Date.now()
+    const minutesSinceCheckin = (now - lastCheckinTime) / (1000 * 60)
+    
+    return minutesSinceCheckin < 45
+  }
+
+  // Check if rider completed a ride today (but not currently in session)
+  const hasRiddenToday = (rider: Rider) => {
+    if (!rider.checkins || rider.checkins.length === 0) return false
+    
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    
+    // Check if any checkin is from today
+    return rider.checkins.some(checkin => {
+      const checkinDate = new Date(checkin.checkinTime)
+      checkinDate.setHours(0, 0, 0, 0)
+      return checkinDate.getTime() === today.getTime()
+    })
+  }
+
+  // Export rider check-in history to PDF
+  const exportRiderPDF = (rider: Rider, batchType: 'morning' | 'evening', batchIndex: number) => {
+    const doc = new jsPDF()
+    const pageWidth = doc.internal.pageSize.getWidth()
+    
+    // Get batch name
+    const batches = batchType === 'morning' ? morningBatches : eveningBatches
+    const batchName = batches[batchIndex]?.name || `Batch ${batchIndex + 1}`
+    
+    // Title
+    doc.setFontSize(20)
+    doc.setFont('helvetica', 'bold')
+    doc.text('Equine Enclave', pageWidth / 2, 20, { align: 'center' })
+    
+    doc.setFontSize(14)
+    doc.setFont('helvetica', 'normal')
+    doc.text('Classes Check-in Report', pageWidth / 2, 30, { align: 'center' })
+    
+    // Horizontal line
+    doc.setLineWidth(0.5)
+    doc.line(20, 35, pageWidth - 20, 35)
+    
+    // Rider details section
+    doc.setFontSize(12)
+    doc.setFont('helvetica', 'bold')
+    doc.text('Rider Details', 20, 45)
+    
+    doc.setFontSize(10)
+    doc.setFont('helvetica', 'normal')
+    let y = 55
+    doc.text(`Name: ${rider.name}`, 20, y)
+    doc.text(`Age: ${rider.age} years`, 120, y)
+    y += 8
+    doc.text(`Level: ${rider.level.charAt(0).toUpperCase() + rider.level.slice(1)}`, 20, y)
+    doc.text(`Batch: ${batchType.charAt(0).toUpperCase() + batchType.slice(1)} - ${batchName}`, 120, y)
+    y += 8
+    doc.text(`Phone: ${rider.phone}`, 20, y)
+    doc.text(`Email: ${rider.email || 'N/A'}`, 120, y)
+    y += 8
+    doc.text(`Joined: ${rider.joinedDate}`, 20, y)
+    doc.text(`Total Classes: ${rider.activeClassesCount}`, 120, y)
+    
+    // Filter only unpaid checkins and sort by date (newest first)
+    const checkins = rider.checkins || []
+    const unpaidCheckins = checkins.filter(c => !c.paid)
+    const sortedCheckins = [...unpaidCheckins].sort((a, b) => 
+      new Date(b.checkinTime).getTime() - new Date(a.checkinTime).getTime()
+    )
+    
+    // Check-ins section
+    y += 15
+    doc.setLineWidth(0.3)
+    doc.line(20, y, pageWidth - 20, y)
+    y += 10
+    
+    doc.setFontSize(12)
+    doc.setFont('helvetica', 'bold')
+    doc.text('Check-in History', 20, y)
+    y += 10
+    
+    // Table headers
+    doc.setFontSize(9)
+    doc.setFont('helvetica', 'bold')
+    doc.text('Ride #', 20, y)
+    doc.text('Date', 50, y)
+    doc.text('Time', 100, y)
+    doc.text('Horse', 140, y)
+    y += 3
+    doc.setLineWidth(0.2)
+    doc.line(20, y, pageWidth - 20, y)
+    y += 7
+    
+    // Table rows
+    doc.setFont('helvetica', 'normal')
+    
+    sortedCheckins.forEach((checkin, index) => {
+      // Check if we need a new page
+      if (y > 270) {
+        doc.addPage()
+        y = 20
+        // Re-add headers on new page
+        doc.setFont('helvetica', 'bold')
+        doc.text('Ride #', 20, y)
+        doc.text('Date', 50, y)
+        doc.text('Time', 100, y)
+        doc.text('Horse', 140, y)
+        y += 3
+        doc.line(20, y, pageWidth - 20, y)
+        y += 7
+        doc.setFont('helvetica', 'normal')
+      }
+      
+      const checkinDate = new Date(checkin.checkinTime)
+      const dateStr = checkinDate.toLocaleDateString('en-IN', { 
+        day: '2-digit', 
+        month: 'short', 
+        year: 'numeric' 
+      })
+      const timeStr = checkinDate.toLocaleTimeString('en-IN', { 
+        hour: '2-digit', 
+        minute: '2-digit',
+        hour12: true 
+      })
+      
+      // Number from total unpaid count (top is highest, goes down)
+      const displayNumber = sortedCheckins.length - index
+      doc.text(String(displayNumber), 20, y)
+      doc.text(dateStr, 50, y)
+      doc.text(timeStr, 100, y)
+      doc.text(checkin.horse || 'N/A', 140, y)
+      y += 7
+    })
+    
+    if (sortedCheckins.length === 0) {
+      doc.text('No unpaid check-ins to display.', 20, y)
+    }
+    
+    // Footer
+    const pageCount = doc.getNumberOfPages()
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i)
+      doc.setFontSize(8)
+      doc.setFont('helvetica', 'italic')
+      doc.text(
+        `Generated on ${new Date().toLocaleString('en-IN')} | Page ${i} of ${pageCount}`,
+        pageWidth / 2,
+        290,
+        { align: 'center' }
+      )
+    }
+    
+    // Save the PDF
+    const fileName = `${rider.name.replace(/\s+/g, '_')}_checkins_${new Date().toISOString().split('T')[0]}.pdf`
+    doc.save(fileName)
   }
 
   // Get all riders with their batch info
@@ -496,7 +885,9 @@ function AdminDashboard() {
     if (!deleteModal.rider) return
     
     const riderId = deleteModal.rider.id
+    const riderName = deleteModal.rider.name
     
+    setLoading(true)
     try {
       const response = await fetch(`${API_BASE_URL}/riders/${riderId}`, {
         method: 'DELETE'
@@ -505,15 +896,17 @@ function AdminDashboard() {
       
       if (result.success) {
         await fetchBatches() // Refresh data
+        setDeleteModal({ isOpen: false, rider: null, batchType: 'morning', batchIndex: 0 })
+        showToast(`${riderName} removed successfully!`, 'success')
       } else {
-        alert(result.message || 'Failed to delete rider')
+        setLoading(false)
+        showToast(result.message || 'Failed to remove rider', 'error')
       }
     } catch (err) {
       console.error('Error deleting rider:', err)
-      alert('Failed to delete rider')
+      setLoading(false)
+      showToast('Failed to remove rider', 'error')
     }
-    
-    setDeleteModal({ isOpen: false, rider: null, batchType: 'morning', batchIndex: 0 })
   }
 
   // Open edit modal with rider data
@@ -523,7 +916,8 @@ function AdminDashboard() {
       age: rider.age.toString(),
       phone: rider.phone,
       email: rider.email,
-      level: rider.level
+      level: rider.level,
+      gender: rider.gender
     })
     setEditRiderModal({ isOpen: true, rider, batchType, batchIndex })
   }
@@ -533,7 +927,9 @@ function AdminDashboard() {
     if (!editRiderModal.rider) return
     
     const riderId = editRiderModal.rider.id
+    const riderName = editRiderData.name
     
+    setLoading(true)
     try {
       const response = await fetch(`${API_BASE_URL}/riders/${riderId}`, {
         method: 'PUT',
@@ -543,22 +939,25 @@ function AdminDashboard() {
           age: parseInt(editRiderData.age),
           phone: editRiderData.phone,
           email: editRiderData.email,
-          level: editRiderData.level
+          level: editRiderData.level,
+          gender: editRiderData.gender
         })
       })
       const result = await response.json()
       
       if (result.success) {
         await fetchBatches() // Refresh data
+        setEditRiderModal({ isOpen: false, rider: null, batchType: 'morning', batchIndex: 0 })
+        showToast(`${riderName} updated successfully!`, 'success')
       } else {
-        alert(result.message || 'Failed to update rider')
+        setLoading(false)
+        showToast(result.message || 'Failed to update rider', 'error')
       }
     } catch (err) {
       console.error('Error updating rider:', err)
-      alert('Failed to update rider')
+      setLoading(false)
+      showToast('Failed to update rider', 'error')
     }
-    
-    setEditRiderModal({ isOpen: false, rider: null, batchType: 'morning', batchIndex: 0 })
   }
 
   // Filter riders based on selected filter
@@ -583,7 +982,9 @@ function AdminDashboard() {
     if (!paymentModal.rider) return
     
     const riderId = paymentModal.rider.id
+    const riderName = paymentModal.rider.name
     
+    setLoading(true)
     try {
       const response = await fetch(`${API_BASE_URL}/riders/${riderId}/pay`, {
         method: 'PATCH'
@@ -592,15 +993,17 @@ function AdminDashboard() {
       
       if (result.success) {
         await fetchBatches() // Refresh data
+        setPaymentModal({ isOpen: false, rider: null, batchType: 'morning', batchIndex: 0 })
+        showToast(`Payment recorded for ${riderName}!`, 'success')
       } else {
-        alert(result.message || 'Failed to process payment')
+        setLoading(false)
+        showToast(result.message || 'Failed to process payment', 'error')
       }
     } catch (err) {
       console.error('Error processing payment:', err)
-      alert('Failed to process payment')
+      setLoading(false)
+      showToast('Failed to process payment', 'error')
     }
-    
-    setPaymentModal({ isOpen: false, rider: null, batchType: 'morning', batchIndex: 0 })
   }
 
   // Function to select target batch (shows confirmation)
@@ -643,12 +1046,13 @@ function AdminDashboard() {
       
       if (result.success) {
         await fetchBatches() // Refresh data
+        showToast(`${rider.name} moved successfully!`, 'success')
       } else {
-        alert(result.message || 'Failed to move rider')
+        showToast(result.message || 'Failed to move rider', 'error')
       }
     } catch (err) {
       console.error('Error moving rider:', err)
-      alert('Failed to move rider')
+      showToast('Failed to move rider', 'error')
     }
     
     setAssignBatchModal({ isOpen: false, rider: null, sourceBatchType: 'morning', sourceBatchIndex: 0, targetBatchType: null, targetBatchIndex: null, isConfirming: false, isMoving: false })
@@ -666,11 +1070,19 @@ function AdminDashboard() {
 
   // Function to add a new rider
   const handleAddRider = async () => {
-    if (!newRider.name || !newRider.age || !newRider.phone) {
-      alert('Please fill in all required fields')
+    // Validate fields
+    const errors: { name?: string; age?: string; phone?: string } = {}
+    if (!newRider.name.trim()) errors.name = 'Name is required'
+    if (!newRider.age) errors.age = 'Age is required'
+    if (!newRider.phone.trim()) errors.phone = 'Phone is required'
+    
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(prev => ({ ...prev, addRider: errors }))
       return
     }
 
+    setFormErrors(prev => ({ ...prev, addRider: {} }))
+    setLoading(true)
     try {
       const response = await fetch(`${API_BASE_URL}/riders`, {
         method: 'POST',
@@ -681,6 +1093,7 @@ function AdminDashboard() {
           phone: newRider.phone,
           email: newRider.email,
           level: newRider.level,
+          gender: newRider.gender,
           batchType: newRider.batchType,
           batchIndex: newRider.batchIndex
         })
@@ -688,6 +1101,7 @@ function AdminDashboard() {
       const result = await response.json()
       
       if (result.success) {
+        const riderName = newRider.name
         await fetchBatches() // Refresh data
         // Reset form and close modal
         setNewRider({
@@ -696,16 +1110,20 @@ function AdminDashboard() {
           phone: '',
           email: '',
           level: 'beginner',
+          gender: 'male',
           batchType: 'morning',
           batchIndex: 0
         })
         setAddRiderModal(false)
+        showToast(`${riderName} added successfully!`, 'success')
       } else {
-        alert(result.message || 'Failed to add rider')
+        setLoading(false)
+        showToast(result.message || 'Failed to add rider', 'error')
       }
     } catch (err) {
       console.error('Error adding rider:', err)
-      alert('Failed to add rider')
+      setLoading(false)
+      showToast('Failed to add rider. Please try again.', 'error')
     }
   }
 
@@ -713,25 +1131,43 @@ function AdminDashboard() {
   const handleCheckin = async () => {
     if (!checkinModal.rider) return
     
+    // Validate horse selection
+    if (!checkinModal.selectedHorse) {
+      setFormErrors(prev => ({ ...prev, checkin: { horse: 'Please select a horse' } }))
+      return
+    }
+    
     const riderId = checkinModal.rider.id
     
+    setLoading(true)
     try {
       const response = await fetch(`${API_BASE_URL}/riders/${riderId}/checkin`, {
-        method: 'PATCH'
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          horse: checkinModal.selectedHorse
+        })
       })
       const result = await response.json()
       
       if (result.success) {
         await fetchBatches() // Refresh data
+        setCheckinModal({ isOpen: false, rider: null, batchType: 'morning', batchIndex: 0, selectedHorse: '' })
+        setHorseDropdownOpen(false)
+        setFormErrors(prev => ({ ...prev, checkin: {} }))
+        showToast(`${checkinModal.rider?.name} checked in successfully!`, 'success')
       } else {
-        alert(result.message || 'Failed to check in rider')
+        setLoading(false)
+        showToast(result.message || 'Failed to check in rider', 'error')
       }
     } catch (err) {
       console.error('Error checking in rider:', err)
+      setLoading(false)
+      showToast('Failed to check in rider. Please try again.', 'error')
       alert('Failed to check in rider')
     }
-    
-    setCheckinModal({ isOpen: false, rider: null, batchType: 'morning', batchIndex: 0 })
   }
 
   const toggleBatch = (batchId: string) => {
@@ -835,7 +1271,6 @@ function AdminDashboard() {
           <div className="admin__horse-list">
             {horses.slice(0, 5).map((horse) => (
               <div key={horse.id} className="horse-item">
-                <div className="horse-item__avatar">🐴</div>
                 <div className="horse-item__info">
                   <span className="horse-item__name">{horse.name}</span>
                   <span className="horse-item__details">
@@ -859,11 +1294,11 @@ function AdminDashboard() {
               <span className="quick-action__label">New Booking</span>
             </button>
             <button className="quick-action" onClick={() => setActiveTab('horses')}>
-              <span className="quick-action__icon">🐴</span>
+              <span className="quick-action__icon"><HorseIcon size={20} /></span>
               <span className="quick-action__label">Add Horse</span>
             </button>
             <button className="quick-action" onClick={() => setActiveTab('riders')}>
-              <span className="quick-action__icon">🏇</span>
+              <span className="quick-action__icon"><RiderIcon size={20} /></span>
               <span className="quick-action__label">Add Rider</span>
             </button>
             <button className="quick-action">
@@ -949,7 +1384,7 @@ function AdminDashboard() {
           <div key={horse.id} className="horse-card">
             <div className="horse-card__header">
               <div className="horse-card__avatar">
-                <span>🐴</span>
+                <HorseIcon size={32} />
               </div>
               <div className="horse-card__title">
                 <h3 className="horse-card__name">{horse.name}</h3>
@@ -1103,14 +1538,15 @@ function AdminDashboard() {
                   <tr key={rider.id} className={selectedRiderId === rider.id ? 'highlighted-row' : ''}>
                     <td>
                       <div className="rider-name">
-                        <span className="rider-avatar">🏇</span>
+                        {isRiderInSession(rider) && <span className="session-indicator session-indicator--active" title="Currently in session"></span>}
+                        {!isRiderInSession(rider) && hasRiddenToday(rider) && <span className="session-indicator session-indicator--completed" title="Completed ride today"></span>}
                         {rider.name}
                       </div>
                     </td>
                     <td>{rider.age} yrs</td>
                     <td>
                       <span className="batch-tag">
-                        {batchType === 'morning' ? '🌅' : '🌆'} {batchType.charAt(0).toUpperCase() + batchType.slice(1)} - {batchName}
+                        {batchType === 'morning' ? <WbSunnyIcon style={{ fontSize: 14, color: '#f39c12', marginRight: 4 }} /> : <NightsStayIcon style={{ fontSize: 14, color: '#9b59b6', marginRight: 4 }} />} {batchType.charAt(0).toUpperCase() + batchType.slice(1)} - {batchName}
                       </span>
                     </td>
                     <td>
@@ -1136,6 +1572,13 @@ function AdminDashboard() {
                         >
                           Remove
                         </button>
+                        <button 
+                          className="export-btn"
+                          onClick={() => exportRiderPDF(rider, batchType, batchIndex)}
+                          title="Export PDF"
+                        >
+                          Export
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -1152,7 +1595,7 @@ function AdminDashboard() {
       {/* Morning Batches */}
       <div className="batch-section">
         <div className="batch-section__header">
-          <span className="batch-section__icon">🌅</span>
+          <span className="batch-section__icon batch-section__icon--morning"><WbSunnyIcon /></span>
           <h2 className="batch-section__title">Morning Batches</h2>
           <span className="batch-section__count">{morningBatches.length} batches</span>
           <button 
@@ -1172,7 +1615,13 @@ function AdminDashboard() {
                 <div className="batch-card__header" onClick={() => toggleBatch(batchId)}>
                   <div className="batch-card__info">
                     <h3 className="batch-card__name">{batch.name}</h3>
-                    <span className="batch-card__time">⏰ {batch.time}</span>
+                    <span className="batch-card__time">
+                      <svg className="clock-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <polyline points="12 6 12 12 16 14"></polyline>
+                      </svg>
+                      {batch.time}
+                    </span>
                   </div>
                   <div className="batch-card__meta">
                     <button 
@@ -1183,7 +1632,7 @@ function AdminDashboard() {
                       }}
                       title="Edit batch timing"
                     >
-                      ✏️
+                      <EditIcon style={{ fontSize: 18 }} />
                     </button>
                     {index >= 3 && (
                       <button 
@@ -1197,11 +1646,12 @@ function AdminDashboard() {
                         🗑️
                       </button>
                     )}
-                    <span className="batch-card__rider-count">
-                      {filterRiders(batch.riders).length} riders
+                    <span className={`batch-card__rider-count ${isBatchFull(batch) ? 'batch-card__rider-count--full' : ''}`}>
+                      {batch.riders.length}/{maxPersonsPerBatch}
                       {riderFilter === 'payment-due' && filterRiders(batch.riders).length !== batch.riders.length && 
-                        ` (of ${batch.riders.length})`
+                        ` (${filterRiders(batch.riders).length} due)`
                       }
+                      {isBatchFull(batch) && ' • Full'}
                     </span>
                     <span className={`batch-card__toggle ${isExpanded ? 'batch-card__toggle--open' : ''}`}>▼</span>
                   </div>
@@ -1214,14 +1664,15 @@ function AdminDashboard() {
                         No riders with payment due in this batch
                       </div>
                     ) : (
+                      <div className="riders-table-wrapper">
                       <table className="riders-table">
                         <thead>
                           <tr>
                             <th>Name</th>
-                            <th>Age</th>
-                            <th>Active Classes</th>
+                            <th>Age</th>                            
                             <th>Level</th>
                             <th>Joined</th>
+                            <th>Active Classes</th>
                             <th>Actions</th>
                           </tr>
                         </thead>
@@ -1230,16 +1681,12 @@ function AdminDashboard() {
                             <tr key={rider.id}>
                               <td>
                                 <div className="rider-name">
-                                  <span className="rider-avatar">🏇</span>
+                                  {isRiderInSession(rider) && <span className="session-indicator session-indicator--active" title="Currently in session"></span>}
+                                  {!isRiderInSession(rider) && hasRiddenToday(rider) && <span className="session-indicator session-indicator--completed" title="Completed ride today"></span>}
                                   {rider.name}
                                 </div>
                               </td>
                               <td>{rider.age} yrs</td>
-                              <td>
-                                <span className={`active-classes ${needsToPay(rider) ? 'active-classes--warning' : ''}`}>
-                                  {rider.activeClassesCount} classes
-                                </span>
-                              </td>
                               <td>
                                 <span className={`level-badge level-badge--${rider.level}`}>
                                   {rider.level}
@@ -1247,10 +1694,15 @@ function AdminDashboard() {
                               </td>
                               <td title={rider.joinedDate}>{formatJoinedDate(rider.joinedDate)}</td>
                               <td>
+                                <span className={`active-classes ${needsToPay(rider) ? 'active-classes--warning' : ''}`}>
+                                  {rider.activeClassesCount} classes
+                                </span>
+                              </td>
+                              <td>
                                 <div className="rider-actions">
                                   <button 
                                     className="checkin-btn"
-                                    onClick={() => setCheckinModal({ isOpen: true, rider, batchType: 'morning', batchIndex: index })}
+                                    onClick={() => setCheckinModal({ isOpen: true, rider, batchType: 'morning', batchIndex: index, selectedHorse: '' })}
                                     title="Check-in"
                                   >
                                     Check-in
@@ -1269,12 +1721,20 @@ function AdminDashboard() {
                                   >
                                     {needsToPay(rider) ? 'Pay' : 'Paid ✓'}
                                   </button>
+                                  <button 
+                                    className="export-btn"
+                                    onClick={() => exportRiderPDF(rider, 'morning', index)}
+                                    title="Export PDF"
+                                  >
+                                    Export
+                                  </button>
                                 </div>
                               </td>
                             </tr>
                           ))}
                         </tbody>
                       </table>
+                      </div>
                     )}
                   </div>
                 )}
@@ -1287,7 +1747,7 @@ function AdminDashboard() {
       {/* Evening Batches */}
       <div className="batch-section">
         <div className="batch-section__header">
-          <span className="batch-section__icon">🌆</span>
+          <span className="batch-section__icon batch-section__icon--evening"><NightsStayIcon /></span>
           <h2 className="batch-section__title">Evening Batches</h2>
           <span className="batch-section__count">{eveningBatches.length} batches</span>
           <button 
@@ -1307,7 +1767,13 @@ function AdminDashboard() {
                 <div className="batch-card__header" onClick={() => toggleBatch(batchId)}>
                   <div className="batch-card__info">
                     <h3 className="batch-card__name">{batch.name}</h3>
-                    <span className="batch-card__time">⏰ {batch.time}</span>
+                    <span className="batch-card__time">
+                      <svg className="clock-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <polyline points="12 6 12 12 16 14"></polyline>
+                      </svg>
+                      {batch.time}
+                    </span>
                   </div>
                   <div className="batch-card__meta">
                     <button 
@@ -1318,7 +1784,7 @@ function AdminDashboard() {
                       }}
                       title="Edit batch timing"
                     >
-                      ✏️
+                      <EditIcon style={{ fontSize: 18 }} />
                     </button>
                     {index >= 3 && (
                       <button 
@@ -1332,11 +1798,12 @@ function AdminDashboard() {
                         🗑️
                       </button>
                     )}
-                    <span className="batch-card__rider-count">
-                      {filterRiders(batch.riders).length} riders
+                    <span className={`batch-card__rider-count ${isBatchFull(batch) ? 'batch-card__rider-count--full' : ''}`}>
+                      {batch.riders.length}/{maxPersonsPerBatch}
                       {riderFilter === 'payment-due' && filterRiders(batch.riders).length !== batch.riders.length && 
-                        ` (of ${batch.riders.length})`
+                        ` (${filterRiders(batch.riders).length} due)`
                       }
+                      {isBatchFull(batch) && ' • Full'}
                     </span>
                     <span className={`batch-card__toggle ${isExpanded ? 'batch-card__toggle--open' : ''}`}>▼</span>
                   </div>
@@ -1349,6 +1816,7 @@ function AdminDashboard() {
                         No riders with payment due in this batch
                       </div>
                     ) : (
+                      <div className="riders-table-wrapper">
                       <table className="riders-table">
                         <thead>
                           <tr>
@@ -1365,7 +1833,8 @@ function AdminDashboard() {
                             <tr key={rider.id}>
                               <td>
                                 <div className="rider-name">
-                                  <span className="rider-avatar">🏇</span>
+                                  {isRiderInSession(rider) && <span className="session-indicator session-indicator--active" title="Currently in session"></span>}
+                                  {!isRiderInSession(rider) && hasRiddenToday(rider) && <span className="session-indicator session-indicator--completed" title="Completed ride today"></span>}
                                   {rider.name}
                                 </div>
                               </td>
@@ -1385,7 +1854,7 @@ function AdminDashboard() {
                                 <div className="rider-actions">
                                   <button 
                                     className="checkin-btn"
-                                    onClick={() => setCheckinModal({ isOpen: true, rider, batchType: 'evening', batchIndex: index })}
+                                    onClick={() => setCheckinModal({ isOpen: true, rider, batchType: 'evening', batchIndex: index, selectedHorse: '' })}
                                     title="Check-in"
                                   >
                                     Check-in
@@ -1404,12 +1873,20 @@ function AdminDashboard() {
                                   >
                                     {needsToPay(rider) ? 'Pay' : 'Paid ✓'}
                                   </button>
+                                  <button 
+                                    className="export-btn"
+                                    onClick={() => exportRiderPDF(rider, 'evening', index)}
+                                    title="Export PDF"
+                                  >
+                                    Export
+                                  </button>
                                 </div>
                               </td>
                             </tr>
                           ))}
                         </tbody>
                       </table>
+                      </div>
                     )}
                   </div>
                 )}
@@ -1421,32 +1898,42 @@ function AdminDashboard() {
       </>
       )}
 
-      {/* Add Rider Button */}
-      <button className="add-rider-btn" onClick={() => setAddRiderModal(true)}>
-        <span>➕</span>
-        Add New Rider
-      </button>
+      {/* Add Rider Button - Hide when any modal is open */}
+      {!paymentModal.isOpen && 
+       !checkinModal.isOpen && 
+       !deleteModal.isOpen && 
+       !editRiderModal.isOpen && 
+       !editBatchModal.isOpen && 
+       !deleteBatchModal.isOpen && 
+       !addBatchModal.isOpen && 
+       !addRiderModal && 
+       !assignBatchModal.isOpen && (
+        <button className="add-rider-btn" onClick={() => setAddRiderModal(true)}>
+          <span>➕</span>
+          Add New Rider
+        </button>
+      )}
 
       {/* Check-in Confirmation Modal */}
       {checkinModal.isOpen && checkinModal.rider && (
-        <div className="modal-overlay" onClick={() => setCheckinModal({ isOpen: false, rider: null, batchType: 'morning', batchIndex: 0 })}>
+        <div className="modal-overlay" onClick={() => { if (!loading) { setCheckinModal({ isOpen: false, rider: null, batchType: 'morning', batchIndex: 0, selectedHorse: '' }); setHorseDropdownOpen(false); setFormErrors(prev => ({ ...prev, checkin: {} })); }}}>
           <div className="modal modal--checkin" onClick={(e) => e.stopPropagation()}>
             <div className="modal__header">
               <h2 className="modal__title">✅ Confirm Check-in</h2>
               <button 
                 className="modal__close"
-                onClick={() => setCheckinModal({ isOpen: false, rider: null, batchType: 'morning', batchIndex: 0 })}
+                onClick={() => { if (!loading) { setCheckinModal({ isOpen: false, rider: null, batchType: 'morning', batchIndex: 0, selectedHorse: '' }); setHorseDropdownOpen(false); setFormErrors(prev => ({ ...prev, checkin: {} })); }}}
+                disabled={loading}
               >
                 ✕
               </button>
             </div>
             <div className="modal__body">
               <div className="modal__rider-info">
-                <div className="modal__rider-avatar">🏇</div>
                 <div className="modal__rider-details">
                   <h3 className="modal__rider-name">{checkinModal.rider.name}</h3>
                   <p className="modal__rider-meta">
-                    {checkinModal.rider.level} • {checkinModal.batchType === 'morning' ? '🌅 Morning' : '🌆 Evening'} {
+                    {checkinModal.rider.level} • {checkinModal.batchType === 'morning' ? <><WbSunnyIcon style={{ fontSize: 14, color: '#f39c12', verticalAlign: 'middle', marginRight: 2 }} /> Morning</> : <><NightsStayIcon style={{ fontSize: 14, color: '#9b59b6', verticalAlign: 'middle', marginRight: 2 }} /> Evening</>} {
                       checkinModal.batchType === 'morning' 
                         ? morningBatches[checkinModal.batchIndex]?.name 
                         : eveningBatches[checkinModal.batchIndex]?.name
@@ -1467,6 +1954,49 @@ function AdminDashboard() {
                 </div>
               </div>
 
+              <div className={`form-field ${formErrors.checkin.horse ? 'form-field--error' : ''}`}>
+                <label>Select Horse *</label>
+                <div className="horse-dropdown">
+                  <div 
+                    className={`horse-dropdown__trigger ${horseDropdownOpen ? 'horse-dropdown__trigger--open' : ''} ${loading ? 'horse-dropdown__trigger--disabled' : ''}`}
+                    onClick={() => !loading && setHorseDropdownOpen(!horseDropdownOpen)}
+                  >
+                    <span className={`horse-dropdown__value ${!checkinModal.selectedHorse ? 'horse-dropdown__value--placeholder' : ''}`}>
+                      {checkinModal.selectedHorse || '-- Select a horse --'}
+                    </span>
+                    <span className="horse-dropdown__arrow">▼</span>
+                  </div>
+                  {horseDropdownOpen && (
+                    <>
+                      <div 
+                        className="horse-dropdown__overlay" 
+                        onClick={() => setHorseDropdownOpen(false)}
+                      />
+                      <div className="horse-dropdown__menu">
+                        {horses?.map(horse => (
+                          <div
+                            key={horse.id}
+                            className={`horse-dropdown__item ${checkinModal.selectedHorse === horse.name ? 'horse-dropdown__item--selected' : ''}`}
+                            onClick={() => {
+                              setCheckinModal(prev => ({ ...prev, selectedHorse: horse.name }))
+                              setHorseDropdownOpen(false)
+                              if (formErrors.checkin.horse) {
+                                setFormErrors(prev => ({ ...prev, checkin: {} }))
+                              }
+                            }}
+                          >
+                            <span className="horse-dropdown__item-name">{horse.name}</span>
+                            <span className="horse-dropdown__item-breed">{horse.breed}</span>
+                            {checkinModal.selectedHorse === horse.name && <span className="horse-dropdown__check">✓</span>}
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+                {formErrors.checkin.horse && <span className="form-field__error">{formErrors.checkin.horse}</span>}
+              </div>
+
               <p className="modal__message">
                 Confirm check-in for <strong>{checkinModal.rider.name}</strong>? This will add 1 class to their active classes count.
               </p>
@@ -1474,15 +2004,18 @@ function AdminDashboard() {
             <div className="modal__footer">
               <button 
                 className="modal__btn modal__btn--cancel"
-                onClick={() => setCheckinModal({ isOpen: false, rider: null, batchType: 'morning', batchIndex: 0 })}
+                onClick={() => { setCheckinModal({ isOpen: false, rider: null, batchType: 'morning', batchIndex: 0, selectedHorse: '' }); setHorseDropdownOpen(false); setFormErrors(prev => ({ ...prev, checkin: {} })); }}
+                disabled={loading}
               >
                 Cancel
               </button>
               <button 
-                className="modal__btn modal__btn--checkin"
+                className={`modal__btn modal__btn--checkin ${loading ? 'modal__btn--loading' : ''}`}
                 onClick={handleCheckin}
+                disabled={loading || !checkinModal.selectedHorse}
               >
-                ✓ Confirm Check-in
+                {loading && <span className="btn-spinner"></span>}
+                {loading ? 'Checking in...' : '✓ Confirm Check-in'}
               </button>
             </div>
           </div>
@@ -1491,24 +2024,24 @@ function AdminDashboard() {
 
       {/* Delete Rider Confirmation Modal */}
       {deleteModal.isOpen && deleteModal.rider && (
-        <div className="modal-overlay" onClick={() => setDeleteModal({ isOpen: false, rider: null, batchType: 'morning', batchIndex: 0 })}>
+        <div className="modal-overlay" onClick={() => !loading && setDeleteModal({ isOpen: false, rider: null, batchType: 'morning', batchIndex: 0 })}>
           <div className="modal modal--delete" onClick={(e) => e.stopPropagation()}>
             <div className="modal__header">
               <h2 className="modal__title">⚠️ Remove Rider</h2>
               <button 
                 className="modal__close"
-                onClick={() => setDeleteModal({ isOpen: false, rider: null, batchType: 'morning', batchIndex: 0 })}
+                onClick={() => !loading && setDeleteModal({ isOpen: false, rider: null, batchType: 'morning', batchIndex: 0 })}
+                disabled={loading}
               >
                 ✕
               </button>
             </div>
             <div className="modal__body">
               <div className="modal__rider-info">
-                <div className="modal__rider-avatar">🏇</div>
                 <div className="modal__rider-details">
                   <h3 className="modal__rider-name">{deleteModal.rider.name}</h3>
                   <p className="modal__rider-meta">
-                    {deleteModal.batchType === 'morning' ? '🌅 Morning' : '🌆 Evening'} - {
+                    {deleteModal.batchType === 'morning' ? <><WbSunnyIcon style={{ fontSize: 14, color: '#f39c12', verticalAlign: 'middle', marginRight: 2 }} /> Morning</> : <><NightsStayIcon style={{ fontSize: 14, color: '#9b59b6', verticalAlign: 'middle', marginRight: 2 }} /> Evening</>} - {
                       deleteModal.batchType === 'morning' 
                         ? morningBatches[deleteModal.batchIndex]?.name 
                         : eveningBatches[deleteModal.batchIndex]?.name
@@ -1524,14 +2057,17 @@ function AdminDashboard() {
               <button 
                 className="modal__btn modal__btn--cancel"
                 onClick={() => setDeleteModal({ isOpen: false, rider: null, batchType: 'morning', batchIndex: 0 })}
+                disabled={loading}
               >
                 Cancel
               </button>
               <button 
-                className="modal__btn modal__btn--danger"
+                className={`modal__btn modal__btn--danger ${loading ? 'modal__btn--loading' : ''}`}
                 onClick={handleDeleteRider}
+                disabled={loading}
               >
-                Remove Rider
+                {loading && <span className="btn-spinner"></span>}
+                {loading ? 'Removing...' : 'Remove Rider'}
               </button>
             </div>
           </div>
@@ -1540,13 +2076,14 @@ function AdminDashboard() {
 
       {/* Edit Rider Modal */}
       {editRiderModal.isOpen && editRiderModal.rider && (
-        <div className="modal-overlay" onClick={() => setEditRiderModal({ isOpen: false, rider: null, batchType: 'morning', batchIndex: 0 })}>
+        <div className="modal-overlay" onClick={() => { if (!loading) { setEditRiderModal({ isOpen: false, rider: null, batchType: 'morning', batchIndex: 0 }); setEditLevelDropdownOpen(false); }}}>
           <div className="modal modal--edit-rider" onClick={(e) => e.stopPropagation()}>
             <div className="modal__header">
-              <h2 className="modal__title">✏️ Edit Rider</h2>
+              <h2 className="modal__title">Edit Rider</h2>
               <button 
                 className="modal__close"
-                onClick={() => setEditRiderModal({ isOpen: false, rider: null, batchType: 'morning', batchIndex: 0 })}
+                onClick={() => { if (!loading) { setEditRiderModal({ isOpen: false, rider: null, batchType: 'morning', batchIndex: 0 }); setEditLevelDropdownOpen(false); }}}
+                disabled={loading}
               >
                 ✕
               </button>
@@ -1600,17 +2137,81 @@ function AdminDashboard() {
                   </div>
                 </div>
 
-                <div className="form-field">
-                  <label htmlFor="edit-rider-level">Skill Level</label>
-                  <select
-                    id="edit-rider-level"
-                    value={editRiderData.level}
-                    onChange={(e) => setEditRiderData(prev => ({ ...prev, level: e.target.value as 'beginner' | 'intermediate' | 'advanced' }))}
-                  >
-                    <option value="beginner">Beginner</option>
-                    <option value="intermediate">Intermediate</option>
-                    <option value="advanced">Advanced</option>
-                  </select>
+                <div className="form-row">
+                  <div className="form-field">
+                    <label>Skill Level</label>
+                    <div className="level-dropdown">
+                      <div 
+                        className={`level-dropdown__trigger ${editLevelDropdownOpen ? 'level-dropdown__trigger--open' : ''}`}
+                        onClick={() => setEditLevelDropdownOpen(!editLevelDropdownOpen)}
+                      >
+                        <span className="level-dropdown__value">
+                          {editRiderData.level.charAt(0).toUpperCase() + editRiderData.level.slice(1)}
+                        </span>
+                        <span className="level-dropdown__arrow">▼</span>
+                      </div>
+                      {editLevelDropdownOpen && (
+                        <>
+                          <div 
+                            className="level-dropdown__overlay" 
+                            onClick={() => setEditLevelDropdownOpen(false)}
+                          />
+                          <div className="level-dropdown__menu">
+                            {(['beginner', 'intermediate', 'advanced'] as const).map(level => (
+                              <div
+                                key={level}
+                                className={`level-dropdown__item ${editRiderData.level === level ? 'level-dropdown__item--selected' : ''}`}
+                                onClick={() => {
+                                  setEditRiderData(prev => ({ ...prev, level }))
+                                  setEditLevelDropdownOpen(false)
+                                }}
+                              >
+                                <span className="level-dropdown__item-name">{level.charAt(0).toUpperCase() + level.slice(1)}</span>
+                                {editRiderData.level === level && <span className="level-dropdown__check">✓</span>}
+                              </div>
+                            ))}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  <div className="form-field">
+                    <label>Gender *</label>
+                    <div className="gender-dropdown">
+                      <div 
+                        className={`gender-dropdown__trigger ${editGenderDropdownOpen ? 'gender-dropdown__trigger--open' : ''}`}
+                        onClick={() => setEditGenderDropdownOpen(!editGenderDropdownOpen)}
+                      >
+                        <span className="gender-dropdown__value">
+                          {editRiderData.gender.charAt(0).toUpperCase() + editRiderData.gender.slice(1)}
+                        </span>
+                        <span className="gender-dropdown__arrow">▼</span>
+                      </div>
+                      {editGenderDropdownOpen && (
+                        <>
+                          <div 
+                            className="gender-dropdown__overlay" 
+                            onClick={() => setEditGenderDropdownOpen(false)}
+                          />
+                          <div className="gender-dropdown__menu">
+                            {(['male', 'female'] as const).map(gender => (
+                              <div
+                                key={gender}
+                                className={`gender-dropdown__item ${editRiderData.gender === gender ? 'gender-dropdown__item--selected' : ''}`}
+                                onClick={() => {
+                                  setEditRiderData(prev => ({ ...prev, gender }))
+                                  setEditGenderDropdownOpen(false)
+                                }}
+                              >
+                                <span className="gender-dropdown__item-name">{gender.charAt(0).toUpperCase() + gender.slice(1)}</span>
+                                {editRiderData.gender === gender && <span className="gender-dropdown__check">✓</span>}
+                              </div>
+                            ))}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
                 </div>
 
                 <div className="form-field form-field--readonly">
@@ -1629,14 +2230,17 @@ function AdminDashboard() {
               <button 
                 className="modal__btn modal__btn--cancel"
                 onClick={() => setEditRiderModal({ isOpen: false, rider: null, batchType: 'morning', batchIndex: 0 })}
+                disabled={loading}
               >
                 Cancel
               </button>
               <button 
-                className="modal__btn modal__btn--confirm"
+                className={`modal__btn modal__btn--confirm ${loading ? 'modal__btn--loading' : ''}`}
                 onClick={handleSaveEdit}
+                disabled={loading}
               >
-                Save Changes
+                {loading && <span className="btn-spinner"></span>}
+                {loading ? 'Saving...' : 'Save Changes'}
               </button>
             </div>
           </div>
@@ -1645,13 +2249,30 @@ function AdminDashboard() {
 
       {/* Edit Batch Timing Modal */}
       {editBatchModal.isOpen && (
-        <div className="modal-overlay" onClick={() => setEditBatchModal({ isOpen: false, batchType: 'morning', batchIndex: 0, name: '', time: '' })}>
+        <div className="modal-overlay" onClick={() => {
+          if (!loading) {
+            setEditBatchModal({ isOpen: false, batchType: 'morning', batchIndex: 0, name: '', time: '' })
+            setFormErrors(prev => ({ ...prev, editBatch: {} }))
+          }
+        }}>
           <div className="modal modal--edit-batch" onClick={(e) => e.stopPropagation()}>
             <div className="modal__header">
-              <h2 className="modal__title">⏰ Edit Batch Timing</h2>
+              <h2 className="modal__title">
+                <svg className="modal__title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+                Edit Batch Timing
+              </h2>
               <button 
                 className="modal__close"
-                onClick={() => setEditBatchModal({ isOpen: false, batchType: 'morning', batchIndex: 0, name: '', time: '' })}
+                onClick={() => {
+                  if (!loading) {
+                    setEditBatchModal({ isOpen: false, batchType: 'morning', batchIndex: 0, name: '', time: '' })
+                    setFormErrors(prev => ({ ...prev, editBatch: {} }))
+                  }
+                }}
+                disabled={loading}
               >
                 ✕
               </button>
@@ -1659,46 +2280,61 @@ function AdminDashboard() {
             <div className="modal__body">
               <div className="edit-batch-info">
                 <span className="edit-batch-type">
-                  {editBatchModal.batchType === 'morning' ? '🌅 Morning' : '🌆 Evening'}
+                  {editBatchModal.batchType === 'morning' ? <><WbSunnyIcon style={{ fontSize: 18, color: '#f39c12', verticalAlign: 'middle', marginRight: 4 }} /> Morning</> : <><NightsStayIcon style={{ fontSize: 18, color: '#9b59b6', verticalAlign: 'middle', marginRight: 4 }} /> Evening</>}
                 </span>
               </div>
               <form className="edit-batch-form" onSubmit={(e) => { e.preventDefault(); handleSaveBatchTiming(); }}>
-                <div className="form-field">
-                  <label htmlFor="batch-name">Batch Name</label>
+                <div className={`form-field ${formErrors.editBatch.name ? 'form-field--error' : ''}`}>
+                  <label htmlFor="batch-name">Batch Name *</label>
                   <input
                     type="text"
                     id="batch-name"
                     value={editBatchModal.name}
-                    onChange={(e) => setEditBatchModal(prev => ({ ...prev, name: e.target.value }))}
+                    onChange={(e) => {
+                      setEditBatchModal(prev => ({ ...prev, name: e.target.value }))
+                      if (formErrors.editBatch.name) setFormErrors(prev => ({ ...prev, editBatch: { ...prev.editBatch, name: undefined } }))
+                    }}
                     placeholder="e.g., Batch 1"
-                    required
+                    disabled={loading}
                   />
+                  {formErrors.editBatch.name && <span className="form-field__error">{formErrors.editBatch.name}</span>}
                 </div>
-                <div className="form-field">
-                  <label htmlFor="batch-time">Timing</label>
+                <div className={`form-field ${formErrors.editBatch.time ? 'form-field--error' : ''}`}>
+                  <label htmlFor="batch-time">Timing *</label>
                   <input
                     type="text"
                     id="batch-time"
                     value={editBatchModal.time}
-                    onChange={(e) => setEditBatchModal(prev => ({ ...prev, time: e.target.value }))}
+                    onChange={(e) => {
+                      setEditBatchModal(prev => ({ ...prev, time: e.target.value }))
+                      if (formErrors.editBatch.time) setFormErrors(prev => ({ ...prev, editBatch: { ...prev.editBatch, time: undefined } }))
+                    }}
                     placeholder="e.g., 6:00 AM - 7:30 AM"
                     required
+                    disabled={loading}
                   />
+                  {formErrors.editBatch.time && <span className="form-field__error">{formErrors.editBatch.time}</span>}
                 </div>
               </form>
             </div>
             <div className="modal__footer">
               <button 
                 className="modal__btn modal__btn--cancel"
-                onClick={() => setEditBatchModal({ isOpen: false, batchType: 'morning', batchIndex: 0, name: '', time: '' })}
+                onClick={() => {
+                  setEditBatchModal({ isOpen: false, batchType: 'morning', batchIndex: 0, name: '', time: '' })
+                  setFormErrors(prev => ({ ...prev, editBatch: {} }))
+                }}
+                disabled={loading}
               >
                 Cancel
               </button>
               <button 
-                className="modal__btn modal__btn--confirm"
+                className={`modal__btn modal__btn--confirm ${loading ? 'modal__btn--loading' : ''}`}
                 onClick={handleSaveBatchTiming}
+                disabled={loading}
               >
-                Save Timing
+                {loading && <span className="btn-spinner"></span>}
+                {loading ? 'Saving...' : 'Save Timing'}
               </button>
             </div>
           </div>
@@ -1707,13 +2343,14 @@ function AdminDashboard() {
 
       {/* Delete Batch Confirmation Modal */}
       {deleteBatchModal.isOpen && deleteBatchModal.batch && (
-        <div className="modal-overlay" onClick={() => setDeleteBatchModal({ isOpen: false, batch: null, batchType: 'morning' })}>
+        <div className="modal-overlay" onClick={() => !loading && setDeleteBatchModal({ isOpen: false, batch: null, batchType: 'morning' })}>
           <div className="modal modal--delete-batch" onClick={(e) => e.stopPropagation()}>
             <div className="modal__header">
               <h2 className="modal__title">⚠️ Delete Batch</h2>
               <button 
                 className="modal__close"
-                onClick={() => setDeleteBatchModal({ isOpen: false, batch: null, batchType: 'morning' })}
+                onClick={() => !loading && setDeleteBatchModal({ isOpen: false, batch: null, batchType: 'morning' })}
+                disabled={loading}
               >
                 ✕
               </button>
@@ -1721,7 +2358,7 @@ function AdminDashboard() {
             <div className="modal__body">
               <div className="delete-batch-info">
                 <span className="delete-batch-type">
-                  {deleteBatchModal.batchType === 'morning' ? '🌅 Morning' : '🌆 Evening'}
+                  {deleteBatchModal.batchType === 'morning' ? <><WbSunnyIcon style={{ fontSize: 18, color: '#f39c12', verticalAlign: 'middle', marginRight: 4 }} /> Morning</> : <><NightsStayIcon style={{ fontSize: 18, color: '#9b59b6', verticalAlign: 'middle', marginRight: 4 }} /> Evening</>}
                 </span>
                 <h3 className="delete-batch-name">{deleteBatchModal.batch.name}</h3>
                 <p className="delete-batch-time">{deleteBatchModal.batch.time}</p>
@@ -1741,15 +2378,17 @@ function AdminDashboard() {
               <button 
                 className="modal__btn modal__btn--cancel"
                 onClick={() => setDeleteBatchModal({ isOpen: false, batch: null, batchType: 'morning' })}
+                disabled={loading}
               >
                 Cancel
               </button>
               <button 
-                className="modal__btn modal__btn--danger"
+                className={`modal__btn modal__btn--danger ${loading ? 'modal__btn--loading' : ''}`}
                 onClick={handleDeleteBatch}
-                disabled={deleteBatchModal.batch.riders.length > 0}
+                disabled={deleteBatchModal.batch.riders.length > 0 || loading}
               >
-                Delete Batch
+                {loading && <span className="btn-spinner"></span>}
+                {loading ? 'Deleting...' : 'Delete Batch'}
               </button>
             </div>
           </div>
@@ -1758,13 +2397,24 @@ function AdminDashboard() {
 
       {/* Add New Batch Modal */}
       {addBatchModal.isOpen && (
-        <div className="modal-overlay" onClick={() => setAddBatchModal({ isOpen: false, batchType: 'morning', name: '', time: '' })}>
+        <div className="modal-overlay" onClick={() => {
+          if (!loading) {
+            setAddBatchModal({ isOpen: false, batchType: 'morning', name: '', time: '' })
+            setFormErrors(prev => ({ ...prev, addBatch: {} }))
+          }
+        }}>
           <div className="modal modal--add-batch" onClick={(e) => e.stopPropagation()}>
             <div className="modal__header">
               <h2 className="modal__title">➕ Add New Batch</h2>
               <button 
                 className="modal__close"
-                onClick={() => setAddBatchModal({ isOpen: false, batchType: 'morning', name: '', time: '' })}
+                onClick={() => {
+                  if (!loading) {
+                    setAddBatchModal({ isOpen: false, batchType: 'morning', name: '', time: '' })
+                    setFormErrors(prev => ({ ...prev, addBatch: {} }))
+                  }
+                }}
+                disabled={loading}
               >
                 ✕
               </button>
@@ -1772,46 +2422,60 @@ function AdminDashboard() {
             <div className="modal__body">
               <div className="edit-batch-info">
                 <span className="edit-batch-type">
-                  {addBatchModal.batchType === 'morning' ? '🌅 Morning' : '🌆 Evening'}
+                  {addBatchModal.batchType === 'morning' ? <><WbSunnyIcon style={{ fontSize: 18, color: '#f39c12', verticalAlign: 'middle', marginRight: 4 }} /> Morning</> : <><NightsStayIcon style={{ fontSize: 18, color: '#9b59b6', verticalAlign: 'middle', marginRight: 4 }} /> Evening</>}
                 </span>
               </div>
               <form className="edit-batch-form" onSubmit={(e) => { e.preventDefault(); handleAddBatch(); }}>
-                <div className="form-field">
+                <div className={`form-field ${formErrors.addBatch.name ? 'form-field--error' : ''}`}>
                   <label htmlFor="new-batch-name">Batch Name *</label>
                   <input
                     type="text"
                     id="new-batch-name"
                     value={addBatchModal.name}
-                    onChange={(e) => setAddBatchModal(prev => ({ ...prev, name: e.target.value }))}
+                    onChange={(e) => {
+                      setAddBatchModal(prev => ({ ...prev, name: e.target.value }))
+                      if (formErrors.addBatch.name) setFormErrors(prev => ({ ...prev, addBatch: { ...prev.addBatch, name: undefined } }))
+                    }}
                     placeholder="e.g., Batch 4, Weekend Special"
-                    required
+                    disabled={loading}
                   />
+                  {formErrors.addBatch.name && <span className="form-field__error">{formErrors.addBatch.name}</span>}
                 </div>
-                <div className="form-field">
+                <div className={`form-field ${formErrors.addBatch.time ? 'form-field--error' : ''}`}>
                   <label htmlFor="new-batch-time">Timing *</label>
                   <input
                     type="text"
                     id="new-batch-time"
                     value={addBatchModal.time}
-                    onChange={(e) => setAddBatchModal(prev => ({ ...prev, time: e.target.value }))}
+                    onChange={(e) => {
+                      setAddBatchModal(prev => ({ ...prev, time: e.target.value }))
+                      if (formErrors.addBatch.time) setFormErrors(prev => ({ ...prev, addBatch: { ...prev.addBatch, time: undefined } }))
+                    }}
                     placeholder="e.g., 10:30 AM - 12:00 PM"
-                    required
+                    disabled={loading}
                   />
+                  {formErrors.addBatch.time && <span className="form-field__error">{formErrors.addBatch.time}</span>}
                 </div>
               </form>
             </div>
             <div className="modal__footer">
               <button 
                 className="modal__btn modal__btn--cancel"
-                onClick={() => setAddBatchModal({ isOpen: false, batchType: 'morning', name: '', time: '' })}
+                onClick={() => {
+                  setAddBatchModal({ isOpen: false, batchType: 'morning', name: '', time: '' })
+                  setFormErrors(prev => ({ ...prev, addBatch: {} }))
+                }}
+                disabled={loading}
               >
                 Cancel
               </button>
               <button 
-                className="modal__btn modal__btn--confirm"
+                className={`modal__btn modal__btn--confirm ${loading ? 'modal__btn--loading' : ''}`}
                 onClick={handleAddBatch}
+                disabled={loading}
               >
-                Add Batch
+                {loading && <span className="btn-spinner"></span>}
+                {loading ? 'Adding...' : 'Add Batch'}
               </button>
             </div>
           </div>
@@ -1820,13 +2484,25 @@ function AdminDashboard() {
 
       {/* Add New Rider Modal */}
       {addRiderModal && (
-        <div className="modal-overlay" onClick={() => setAddRiderModal(false)}>
+        <div className="modal-overlay" onClick={() => {
+          if (!loading) {
+            setAddRiderModal(false)
+            setLevelDropdownOpen(false)
+            setFormErrors(prev => ({ ...prev, addRider: {} }))
+          }
+        }}>
           <div className="modal modal--add-rider" onClick={(e) => e.stopPropagation()}>
             <div className="modal__header">
-              <h2 className="modal__title">🏇 Add New Rider</h2>
+              <h2 className="modal__title">Add New Rider</h2>
               <button 
                 className="modal__close"
-                onClick={() => setAddRiderModal(false)}
+                onClick={() => {
+                  if (!loading) {
+                    setAddRiderModal(false)
+                    setFormErrors(prev => ({ ...prev, addRider: {} }))
+                  }
+                }}
+                disabled={loading}
               >
                 ✕
               </button>
@@ -1834,18 +2510,21 @@ function AdminDashboard() {
             <div className="modal__body">
               <form className="add-rider-form" onSubmit={(e) => { e.preventDefault(); handleAddRider(); }}>
                 <div className="form-row">
-                  <div className="form-field">
+                  <div className={`form-field ${formErrors.addRider.name ? 'form-field--error' : ''}`}>
                     <label htmlFor="rider-name">Name *</label>
                     <input
                       type="text"
                       id="rider-name"
                       placeholder="Enter rider's name"
                       value={newRider.name}
-                      onChange={(e) => setNewRider(prev => ({ ...prev, name: e.target.value }))}
-                      required
+                      onChange={(e) => {
+                        setNewRider(prev => ({ ...prev, name: e.target.value }))
+                        if (formErrors.addRider.name) setFormErrors(prev => ({ ...prev, addRider: { ...prev.addRider, name: undefined } }))
+                      }}
                     />
+                    {formErrors.addRider.name && <span className="form-field__error">{formErrors.addRider.name}</span>}
                   </div>
-                  <div className="form-field">
+                  <div className={`form-field ${formErrors.addRider.age ? 'form-field--error' : ''}`}>
                     <label htmlFor="rider-age">Age *</label>
                     <input
                       type="number"
@@ -1854,23 +2533,29 @@ function AdminDashboard() {
                       min="5"
                       max="80"
                       value={newRider.age}
-                      onChange={(e) => setNewRider(prev => ({ ...prev, age: e.target.value }))}
-                      required
+                      onChange={(e) => {
+                        setNewRider(prev => ({ ...prev, age: e.target.value }))
+                        if (formErrors.addRider.age) setFormErrors(prev => ({ ...prev, addRider: { ...prev.addRider, age: undefined } }))
+                      }}
                     />
+                    {formErrors.addRider.age && <span className="form-field__error">{formErrors.addRider.age}</span>}
                   </div>
                 </div>
 
                 <div className="form-row">
-                  <div className="form-field">
+                  <div className={`form-field ${formErrors.addRider.phone ? 'form-field--error' : ''}`}>
                     <label htmlFor="rider-phone">Phone *</label>
                     <input
                       type="tel"
                       id="rider-phone"
                       placeholder="+91 98765 43210"
                       value={newRider.phone}
-                      onChange={(e) => setNewRider(prev => ({ ...prev, phone: e.target.value }))}
-                      required
+                      onChange={(e) => {
+                        setNewRider(prev => ({ ...prev, phone: e.target.value }))
+                        if (formErrors.addRider.phone) setFormErrors(prev => ({ ...prev, addRider: { ...prev.addRider, phone: undefined } }))
+                      }}
                     />
+                    {formErrors.addRider.phone && <span className="form-field__error">{formErrors.addRider.phone}</span>}
                   </div>
                   <div className="form-field">
                     <label htmlFor="rider-email">Email</label>
@@ -1884,55 +2569,143 @@ function AdminDashboard() {
                   </div>
                 </div>
 
-                <div className="form-field">
-                  <label htmlFor="rider-level">Skill Level</label>
-                  <select
-                    id="rider-level"
-                    value={newRider.level}
-                    onChange={(e) => setNewRider(prev => ({ ...prev, level: e.target.value as 'beginner' | 'intermediate' | 'advanced' }))}
-                  >
-                    <option value="beginner">Beginner</option>
-                    <option value="intermediate">Intermediate</option>
-                    <option value="advanced">Advanced</option>
-                  </select>
+                <div className="form-row">
+                  <div className="form-field">
+                    <label>Skill Level</label>
+                    <div className="level-dropdown">
+                      <div 
+                        className={`level-dropdown__trigger ${levelDropdownOpen ? 'level-dropdown__trigger--open' : ''}`}
+                        onClick={() => setLevelDropdownOpen(!levelDropdownOpen)}
+                      >
+                        <span className="level-dropdown__value">
+                          {newRider.level.charAt(0).toUpperCase() + newRider.level.slice(1)}
+                        </span>
+                        <span className="level-dropdown__arrow">▼</span>
+                      </div>
+                      {levelDropdownOpen && (
+                        <>
+                          <div 
+                            className="level-dropdown__overlay" 
+                            onClick={() => setLevelDropdownOpen(false)}
+                          />
+                          <div className="level-dropdown__menu">
+                            {(['beginner', 'intermediate', 'advanced'] as const).map(level => (
+                              <div
+                                key={level}
+                                className={`level-dropdown__item ${newRider.level === level ? 'level-dropdown__item--selected' : ''}`}
+                                onClick={() => {
+                                  setNewRider(prev => ({ ...prev, level }))
+                                  setLevelDropdownOpen(false)
+                                }}
+                              >
+                                <span className="level-dropdown__item-name">{level.charAt(0).toUpperCase() + level.slice(1)}</span>
+                                {newRider.level === level && <span className="level-dropdown__check">✓</span>}
+                              </div>
+                            ))}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  <div className="form-field">
+                    <label>Gender *</label>
+                    <div className="gender-dropdown">
+                      <div 
+                        className={`gender-dropdown__trigger ${genderDropdownOpen ? 'gender-dropdown__trigger--open' : ''}`}
+                        onClick={() => setGenderDropdownOpen(!genderDropdownOpen)}
+                      >
+                        <span className="gender-dropdown__value">
+                          {newRider.gender.charAt(0).toUpperCase() + newRider.gender.slice(1)}
+                        </span>
+                        <span className="gender-dropdown__arrow">▼</span>
+                      </div>
+                      {genderDropdownOpen && (
+                        <>
+                          <div 
+                            className="gender-dropdown__overlay" 
+                            onClick={() => setGenderDropdownOpen(false)}
+                          />
+                          <div className="gender-dropdown__menu">
+                            {(['male', 'female'] as const).map(gender => (
+                              <div
+                                key={gender}
+                                className={`gender-dropdown__item ${newRider.gender === gender ? 'gender-dropdown__item--selected' : ''}`}
+                                onClick={() => {
+                                  setNewRider(prev => ({ ...prev, gender }))
+                                  setGenderDropdownOpen(false)
+                                }}
+                              >
+                                <span className="gender-dropdown__item-name">{gender.charAt(0).toUpperCase() + gender.slice(1)}</span>
+                                {newRider.gender === gender && <span className="gender-dropdown__check">✓</span>}
+                              </div>
+                            ))}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
                 </div>
 
                 <div className="form-field">
                   <label>Assign to Batch *</label>
                   <div className="batch-select-grid">
                     <div className="batch-select-group">
-                      <span className="batch-select-label">🌅 Morning</span>
-                      {morningBatches.filter(b => b != null).map((batch, idx) => (
-                        <label key={`morning-${idx}`} className="batch-radio">
-                          <input
-                            type="radio"
-                            name="batch"
-                            checked={newRider.batchType === 'morning' && newRider.batchIndex === idx}
-                            onChange={() => setNewRider(prev => ({ ...prev, batchType: 'morning', batchIndex: idx }))}
-                          />
-                          <span className="batch-radio__content">
-                            <span className="batch-radio__name">{batch.name}</span>
-                            <span className="batch-radio__time">{batch.time}</span>
-                          </span>
-                        </label>
-                      ))}
+                      <span className="batch-select-label"><WbSunnyIcon style={{ fontSize: 16, color: '#f39c12', verticalAlign: 'middle', marginRight: 4 }} /> Morning</span>
+                      {morningBatches.filter(b => b != null).map((batch, idx) => {
+                        const isFull = isBatchFull(batch)
+                        return (
+                          <label 
+                            key={`morning-${idx}`} 
+                            className={`batch-radio ${isFull ? 'batch-radio--disabled' : ''}`}
+                            title={isFull ? `Batch full (${batch.riders.length}/${maxPersonsPerBatch})` : ''}
+                          >
+                            <input
+                              type="radio"
+                              name="batch"
+                              checked={newRider.batchType === 'morning' && newRider.batchIndex === idx}
+                              onChange={() => setNewRider(prev => ({ ...prev, batchType: 'morning', batchIndex: idx }))}
+                              disabled={isFull}
+                            />
+                            <span className="batch-radio__content">
+                              <span className="batch-radio__name">{batch.name}</span>
+                              <span className="batch-radio__time">{batch.time}</span>
+                              <span className={`batch-radio__capacity ${isFull ? 'batch-radio__capacity--full' : ''}`}>
+                                {batch.riders.length}/{maxPersonsPerBatch}
+                                {isFull && ' (Full)'}
+                              </span>
+                            </span>
+                          </label>
+                        )
+                      })}
                     </div>
                     <div className="batch-select-group">
-                      <span className="batch-select-label">🌆 Evening</span>
-                      {eveningBatches.filter(b => b != null).map((batch, idx) => (
-                        <label key={`evening-${idx}`} className="batch-radio">
-                          <input
-                            type="radio"
-                            name="batch"
-                            checked={newRider.batchType === 'evening' && newRider.batchIndex === idx}
-                            onChange={() => setNewRider(prev => ({ ...prev, batchType: 'evening', batchIndex: idx }))}
-                          />
-                          <span className="batch-radio__content">
-                            <span className="batch-radio__name">{batch.name}</span>
-                            <span className="batch-radio__time">{batch.time}</span>
-                          </span>
-                        </label>
-                      ))}
+                      <span className="batch-select-label"><NightsStayIcon style={{ fontSize: 16, color: '#9b59b6', verticalAlign: 'middle', marginRight: 4 }} /> Evening</span>
+                      {eveningBatches.filter(b => b != null).map((batch, idx) => {
+                        const isFull = isBatchFull(batch)
+                        return (
+                          <label 
+                            key={`evening-${idx}`} 
+                            className={`batch-radio ${isFull ? 'batch-radio--disabled' : ''}`}
+                            title={isFull ? `Batch full (${batch.riders.length}/${maxPersonsPerBatch})` : ''}
+                          >
+                            <input
+                              type="radio"
+                              name="batch"
+                              checked={newRider.batchType === 'evening' && newRider.batchIndex === idx}
+                              onChange={() => setNewRider(prev => ({ ...prev, batchType: 'evening', batchIndex: idx }))}
+                              disabled={isFull}
+                            />
+                            <span className="batch-radio__content">
+                              <span className="batch-radio__name">{batch.name}</span>
+                              <span className="batch-radio__time">{batch.time}</span>
+                              <span className={`batch-radio__capacity ${isFull ? 'batch-radio__capacity--full' : ''}`}>
+                                {batch.riders.length}/{maxPersonsPerBatch}
+                                {isFull && ' (Full)'}
+                              </span>
+                            </span>
+                          </label>
+                        )
+                      })}
                     </div>
                   </div>
                 </div>
@@ -1941,15 +2714,21 @@ function AdminDashboard() {
             <div className="modal__footer">
               <button 
                 className="modal__btn modal__btn--cancel"
-                onClick={() => setAddRiderModal(false)}
+                onClick={() => {
+                  setAddRiderModal(false)
+                  setFormErrors(prev => ({ ...prev, addRider: {} }))
+                }}
+                disabled={loading}
               >
                 Cancel
               </button>
               <button 
-                className="modal__btn modal__btn--confirm"
+                className={`modal__btn modal__btn--confirm ${loading ? 'modal__btn--loading' : ''}`}
                 onClick={handleAddRider}
+                disabled={loading}
               >
-                Add Rider
+                {loading && <span className="btn-spinner"></span>}
+                {loading ? 'Adding...' : 'Add Rider'}
               </button>
             </div>
           </div>
@@ -1979,7 +2758,6 @@ function AdminDashboard() {
               ) : assignBatchModal.isConfirming && assignBatchModal.targetBatchType !== null && assignBatchModal.targetBatchIndex !== null ? (
                 <>
                   <div className="modal__rider-info">
-                    <div className="modal__rider-avatar">🏇</div>
                     <div className="modal__rider-details">
                       <h3 className="modal__rider-name">{assignBatchModal.rider.name}</h3>
                     </div>
@@ -1989,7 +2767,7 @@ function AdminDashboard() {
                     <div className="move-confirmation__from">
                       <span className="move-confirmation__label">From</span>
                       <span className="move-confirmation__batch">
-                        {assignBatchModal.sourceBatchType === 'morning' ? '🌅' : '🌆'} {
+                        {assignBatchModal.sourceBatchType === 'morning' ? <WbSunnyIcon style={{ fontSize: 14, color: '#f39c12', verticalAlign: 'middle', marginRight: 4 }} /> : <NightsStayIcon style={{ fontSize: 14, color: '#9b59b6', verticalAlign: 'middle', marginRight: 4 }} />} {
                           assignBatchModal.sourceBatchType === 'morning' 
                             ? morningBatches[assignBatchModal.sourceBatchIndex]?.name 
                             : eveningBatches[assignBatchModal.sourceBatchIndex]?.name
@@ -2000,7 +2778,7 @@ function AdminDashboard() {
                     <div className="move-confirmation__to">
                       <span className="move-confirmation__label">To</span>
                       <span className="move-confirmation__batch">
-                        {assignBatchModal.targetBatchType === 'morning' ? '🌅' : '🌆'} {
+                        {assignBatchModal.targetBatchType === 'morning' ? <WbSunnyIcon style={{ fontSize: 14, color: '#f39c12', verticalAlign: 'middle', marginRight: 4 }} /> : <NightsStayIcon style={{ fontSize: 14, color: '#9b59b6', verticalAlign: 'middle', marginRight: 4 }} />} {
                           assignBatchModal.targetBatchType === 'morning' 
                             ? morningBatches[assignBatchModal.targetBatchIndex]?.name 
                             : eveningBatches[assignBatchModal.targetBatchIndex]?.name
@@ -2016,11 +2794,10 @@ function AdminDashboard() {
               ) : (
                 <>
                   <div className="modal__rider-info">
-                    <div className="modal__rider-avatar">🏇</div>
                     <div className="modal__rider-details">
                       <h3 className="modal__rider-name">{assignBatchModal.rider.name}</h3>
                       <p className="modal__rider-meta">
-                        Currently in: {assignBatchModal.sourceBatchType === 'morning' ? '🌅 Morning' : '🌆 Evening'} - {
+                        Currently in: {assignBatchModal.sourceBatchType === 'morning' ? <><WbSunnyIcon style={{ fontSize: 14, color: '#f39c12', verticalAlign: 'middle', marginRight: 2 }} /> Morning</> : <><NightsStayIcon style={{ fontSize: 14, color: '#9b59b6', verticalAlign: 'middle', marginRight: 2 }} /> Evening</>} - {
                           assignBatchModal.sourceBatchType === 'morning' 
                             ? morningBatches[assignBatchModal.sourceBatchIndex]?.name 
                             : eveningBatches[assignBatchModal.sourceBatchIndex]?.name
@@ -2033,21 +2810,25 @@ function AdminDashboard() {
                     <h4 className="batch-selection__title">Select Target Batch</h4>
                     
                     <div className="batch-selection__group">
-                      <h5 className="batch-selection__group-title">🌅 Morning Batches</h5>
+                      <h5 className="batch-selection__group-title"><WbSunnyIcon style={{ fontSize: 18, color: '#f39c12', marginRight: 6 }} /> Morning Batches</h5>
                       <div className="batch-selection__options">
                         {morningBatches.filter(b => b != null).map((batch, idx) => {
                           const isCurrent = assignBatchModal.sourceBatchType === 'morning' && assignBatchModal.sourceBatchIndex === idx
+                          const isFull = isBatchFull(batch)
                           return (
                             <button
                               key={`morning-${idx}`}
-                              className={`batch-option ${isCurrent ? 'batch-option--current' : ''}`}
+                              className={`batch-option ${isCurrent ? 'batch-option--current' : ''} ${isFull && !isCurrent ? 'batch-option--full' : ''}`}
                               onClick={() => selectTargetBatch('morning', idx)}
-                              disabled={isCurrent}
+                              disabled={isCurrent || isFull}
                             >
                               <span className="batch-option__name">{batch.name}</span>
                               <span className="batch-option__time">{batch.time}</span>
-                              <span className="batch-option__count">{batch.riders.length} riders</span>
+                              <span className={`batch-option__count ${isFull ? 'batch-option__count--full' : ''}`}>
+                                {batch.riders.length}/{maxPersonsPerBatch}
+                              </span>
                               {isCurrent && <span className="batch-option__current-tag">Current</span>}
+                              {isFull && !isCurrent && <span className="batch-option__full-tag">Full</span>}
                             </button>
                           )
                         })}
@@ -2055,21 +2836,25 @@ function AdminDashboard() {
                     </div>
                     
                     <div className="batch-selection__group">
-                      <h5 className="batch-selection__group-title">🌆 Evening Batches</h5>
+                      <h5 className="batch-selection__group-title"><NightsStayIcon style={{ fontSize: 18, color: '#9b59b6', marginRight: 6 }} /> Evening Batches</h5>
                       <div className="batch-selection__options">
                         {eveningBatches.filter(b => b != null).map((batch, idx) => {
                           const isCurrent = assignBatchModal.sourceBatchType === 'evening' && assignBatchModal.sourceBatchIndex === idx
+                          const isFull = isBatchFull(batch)
                           return (
                             <button
                               key={`evening-${idx}`}
-                              className={`batch-option ${isCurrent ? 'batch-option--current' : ''}`}
+                              className={`batch-option ${isCurrent ? 'batch-option--current' : ''} ${isFull && !isCurrent ? 'batch-option--full' : ''}`}
                               onClick={() => selectTargetBatch('evening', idx)}
-                              disabled={isCurrent}
+                              disabled={isCurrent || isFull}
                             >
                               <span className="batch-option__name">{batch.name}</span>
                               <span className="batch-option__time">{batch.time}</span>
-                              <span className="batch-option__count">{batch.riders.length} riders</span>
+                              <span className={`batch-option__count ${isFull ? 'batch-option__count--full' : ''}`}>
+                                {batch.riders.length}/{maxPersonsPerBatch}
+                              </span>
                               {isCurrent && <span className="batch-option__current-tag">Current</span>}
+                              {isFull && !isCurrent && <span className="batch-option__full-tag">Full</span>}
                             </button>
                           )
                         })}
@@ -2112,20 +2897,20 @@ function AdminDashboard() {
 
       {/* Payment Confirmation Modal */}
       {paymentModal.isOpen && paymentModal.rider && (
-        <div className="modal-overlay" onClick={() => setPaymentModal({ isOpen: false, rider: null, batchType: 'morning', batchIndex: 0 })}>
+        <div className="modal-overlay" onClick={() => !loading && setPaymentModal({ isOpen: false, rider: null, batchType: 'morning', batchIndex: 0 })}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal__header">
               <h2 className="modal__title">💰 Confirm Payment</h2>
               <button 
                 className="modal__close"
-                onClick={() => setPaymentModal({ isOpen: false, rider: null, batchType: 'morning', batchIndex: 0 })}
+                onClick={() => !loading && setPaymentModal({ isOpen: false, rider: null, batchType: 'morning', batchIndex: 0 })}
+                disabled={loading}
               >
                 ✕
               </button>
             </div>
             <div className="modal__body">
               <div className="modal__rider-info">
-                <div className="modal__rider-avatar">🏇</div>
                 <div className="modal__rider-details">
                   <h3 className="modal__rider-name">{paymentModal.rider.name}</h3>
                   <p className="modal__rider-meta">
@@ -2153,18 +2938,355 @@ function AdminDashboard() {
               <button 
                 className="modal__btn modal__btn--cancel"
                 onClick={() => setPaymentModal({ isOpen: false, rider: null, batchType: 'morning', batchIndex: 0 })}
+                disabled={loading}
               >
                 Cancel
               </button>
               <button 
-                className="modal__btn modal__btn--confirm"
+                className={`modal__btn modal__btn--confirm ${loading ? 'modal__btn--loading' : ''}`}
                 onClick={handlePayment}
+                disabled={loading}
               >
-                Mark as Paid
+                {loading && <span className="btn-spinner"></span>}
+                {loading ? 'Processing...' : 'Mark as Paid'}
               </button>
             </div>
           </div>
         </div>
+      )}
+    </div>
+  )
+
+  // Calculate horse analytics from rides data
+  const calculateHorseAnalytics = (): HorseAnalytics[] => {
+    const horseMap = new Map<string, HorseAnalytics>()
+    
+    // Get unique horses from the horses array
+    horses.forEach(horse => {
+      horseMap.set(horse.name, {
+        horseName: horse.name,
+        totalRides: 0,
+        beginnerRides: 0,
+        intermediateRides: 0,
+        advancedRides: 0,
+        totalHours: 0,
+        beginnerHours: 0,
+        intermediateHours: 0,
+        advancedHours: 0
+      })
+    })
+    
+    // Calculate analytics from rides
+    allRides.forEach(ride => {
+      const analytics = horseMap.get(ride.horse)
+      if (analytics) {
+        analytics.totalRides++
+        analytics.totalHours += 0.75 // 45 mins = 0.75 hours
+        
+        if (ride.riderLevel === 'beginner') {
+          analytics.beginnerRides++
+          analytics.beginnerHours += 0.75
+        } else if (ride.riderLevel === 'intermediate') {
+          analytics.intermediateRides++
+          analytics.intermediateHours += 0.75
+        } else if (ride.riderLevel === 'advanced') {
+          analytics.advancedRides++
+          analytics.advancedHours += 0.75
+        }
+      }
+    })
+    
+    return Array.from(horseMap.values()).sort((a, b) => b.totalRides - a.totalRides)
+  }
+  
+  const horseAnalytics = calculateHorseAnalytics()
+  const selectedHorseData = horseAnalytics.find(h => h.horseName === selectedReportHorse)
+  const totalRidesAllHorses = horseAnalytics.reduce((sum, h) => sum + h.totalRides, 0)
+
+  const renderReports = () => (
+    <div className="reports-section">
+      {reportsLoading ? (
+        <div className="reports-loading">
+          <div className="spinner"></div>
+          <p>Loading reports data...</p>
+        </div>
+      ) : (
+        <>
+          {/* Horse Selection */}
+          <div className="reports-filter">
+            <label className="reports-filter__label">Select Horse:</label>
+            <div className="reports-horse-dropdown">
+              <div 
+                className={`reports-horse-dropdown__trigger ${reportsHorseDropdownOpen ? 'reports-horse-dropdown__trigger--open' : ''}`}
+                onClick={() => setReportsHorseDropdownOpen(!reportsHorseDropdownOpen)}
+              >
+                <span className={`reports-horse-dropdown__value ${!selectedReportHorse ? 'reports-horse-dropdown__value--placeholder' : ''}`}>
+                  {selectedReportHorse || '-- All Horses --'}
+                </span>
+                <span className="reports-horse-dropdown__arrow">▼</span>
+              </div>
+              {reportsHorseDropdownOpen && (
+                <>
+                  <div 
+                    className="reports-horse-dropdown__overlay" 
+                    onClick={() => setReportsHorseDropdownOpen(false)}
+                  />
+                  <div className="reports-horse-dropdown__menu">
+                    <div
+                      className={`reports-horse-dropdown__item ${!selectedReportHorse ? 'reports-horse-dropdown__item--selected' : ''}`}
+                      onClick={() => {
+                        setSelectedReportHorse('')
+                        setReportsHorseDropdownOpen(false)
+                      }}
+                    >
+                      <span className="reports-horse-dropdown__item-name">All Horses</span>
+                      {!selectedReportHorse && <span className="reports-horse-dropdown__check">✓</span>}
+                    </div>
+                    {horses.map(horse => (
+                      <div
+                        key={horse.id}
+                        className={`reports-horse-dropdown__item ${selectedReportHorse === horse.name ? 'reports-horse-dropdown__item--selected' : ''}`}
+                        onClick={() => {
+                          setSelectedReportHorse(horse.name)
+                          setReportsHorseDropdownOpen(false)
+                        }}
+                      >
+                        <span className="reports-horse-dropdown__item-name">{horse.name}</span>
+                        {selectedReportHorse === horse.name && <span className="reports-horse-dropdown__check">✓</span>}
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+            <button 
+              className="reports-filter__refresh"
+              onClick={fetchRides}
+              title="Refresh Data"
+            >
+              🔄 Refresh
+            </button>
+          </div>
+
+          {/* Summary Stats */}
+          <div className="reports-summary">
+            <div className="reports-stat-card">
+              <div className="reports-stat-card__icon">🐎</div>
+              <div className="reports-stat-card__content">
+                <span className="reports-stat-card__value">
+                  {selectedReportHorse ? selectedHorseData?.totalRides || 0 : totalRidesAllHorses}
+                </span>
+                <span className="reports-stat-card__label">Total Rides</span>
+              </div>
+            </div>
+            <div className="reports-stat-card reports-stat-card--beginner">
+              <div className="reports-stat-card__icon">🌱</div>
+              <div className="reports-stat-card__content">
+                <span className="reports-stat-card__value">
+                  {selectedReportHorse 
+                    ? selectedHorseData?.beginnerRides || 0 
+                    : horseAnalytics.reduce((sum, h) => sum + h.beginnerRides, 0)}
+                </span>
+                <span className="reports-stat-card__label">Beginner Rides</span>
+              </div>
+            </div>
+            <div className="reports-stat-card reports-stat-card--intermediate">
+              <div className="reports-stat-card__icon">⭐</div>
+              <div className="reports-stat-card__content">
+                <span className="reports-stat-card__value">
+                  {selectedReportHorse 
+                    ? selectedHorseData?.intermediateRides || 0 
+                    : horseAnalytics.reduce((sum, h) => sum + h.intermediateRides, 0)}
+                </span>
+                <span className="reports-stat-card__label">Intermediate Rides</span>
+              </div>
+            </div>
+            <div className="reports-stat-card reports-stat-card--advanced">
+              <div className="reports-stat-card__icon">🏆</div>
+              <div className="reports-stat-card__content">
+                <span className="reports-stat-card__value">
+                  {selectedReportHorse 
+                    ? selectedHorseData?.advancedRides || 0 
+                    : horseAnalytics.reduce((sum, h) => sum + h.advancedRides, 0)}
+                </span>
+                <span className="reports-stat-card__label">Advanced Rides</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Hours Breakdown */}
+          <div className="reports-hours">
+            <h3 className="reports-section-title">⏱️ Hours Breakdown (45 mins per ride)</h3>
+            <div className="reports-hours-grid">
+              <div className="reports-hours-card">
+                <span className="reports-hours-card__label">Total Hours</span>
+                <span className="reports-hours-card__value">
+                  {(selectedReportHorse 
+                    ? selectedHorseData?.totalHours || 0 
+                    : horseAnalytics.reduce((sum, h) => sum + h.totalHours, 0)
+                  ).toFixed(1)} hrs
+                </span>
+              </div>
+              <div className="reports-hours-card reports-hours-card--beginner">
+                <span className="reports-hours-card__label">Beginner Hours</span>
+                <span className="reports-hours-card__value">
+                  {(selectedReportHorse 
+                    ? selectedHorseData?.beginnerHours || 0 
+                    : horseAnalytics.reduce((sum, h) => sum + h.beginnerHours, 0)
+                  ).toFixed(1)} hrs
+                </span>
+              </div>
+              <div className="reports-hours-card reports-hours-card--intermediate">
+                <span className="reports-hours-card__label">Intermediate Hours</span>
+                <span className="reports-hours-card__value">
+                  {(selectedReportHorse 
+                    ? selectedHorseData?.intermediateHours || 0 
+                    : horseAnalytics.reduce((sum, h) => sum + h.intermediateHours, 0)
+                  ).toFixed(1)} hrs
+                </span>
+              </div>
+              <div className="reports-hours-card reports-hours-card--advanced">
+                <span className="reports-hours-card__label">Advanced Hours</span>
+                <span className="reports-hours-card__value">
+                  {(selectedReportHorse 
+                    ? selectedHorseData?.advancedHours || 0 
+                    : horseAnalytics.reduce((sum, h) => sum + h.advancedHours, 0)
+                  ).toFixed(1)} hrs
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Horse Comparison Table */}
+          <div className="reports-comparison">
+            <h3 className="reports-section-title">📊 Horse Comparison</h3>
+            <div className="reports-table-wrapper">
+              <table className="reports-table">
+                <thead>
+                  <tr>
+                    <th>Horse</th>
+                    <th>Total Rides</th>
+                    <th>Beginner</th>
+                    <th>Intermediate</th>
+                    <th>Advanced</th>
+                    <th>Total Hours</th>
+                    <th>Usage %</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {horseAnalytics.map((horse, index) => (
+                    <tr 
+                      key={horse.horseName} 
+                      className={`${selectedReportHorse === horse.horseName ? 'reports-table__row--selected' : ''} ${index === 0 ? 'reports-table__row--top' : ''}`}
+                      onClick={() => setSelectedReportHorse(horse.horseName === selectedReportHorse ? '' : horse.horseName)}
+                    >
+                      <td>
+                        <div className="reports-table__horse">
+                          {index === 0 && <span className="reports-table__crown">👑</span>}
+                          {horse.horseName}
+                        </div>
+                      </td>
+                      <td><strong>{horse.totalRides}</strong></td>
+                      <td><span className="level-badge level-badge--beginner">{horse.beginnerRides}</span></td>
+                      <td><span className="level-badge level-badge--intermediate">{horse.intermediateRides}</span></td>
+                      <td><span className="level-badge level-badge--advanced">{horse.advancedRides}</span></td>
+                      <td>{horse.totalHours.toFixed(1)} hrs</td>
+                      <td>
+                        <div className="reports-table__usage">
+                          <div 
+                            className="reports-table__usage-bar" 
+                            style={{ width: `${totalRidesAllHorses > 0 ? (horse.totalRides / totalRidesAllHorses * 100) : 0}%` }}
+                          />
+                          <span>{totalRidesAllHorses > 0 ? (horse.totalRides / totalRidesAllHorses * 100).toFixed(1) : 0}%</span>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Selected Horse Details */}
+          {selectedReportHorse && selectedHorseData && (
+            <div className="reports-details">
+              <h3 className="reports-section-title">🐴 {selectedReportHorse} - Detailed Analytics</h3>
+              <div className="reports-details-grid">
+                <div className="reports-detail-card">
+                  <h4>Ride Distribution</h4>
+                  <div className="reports-distribution">
+                    <div className="reports-distribution__bar">
+                      <div 
+                        className="reports-distribution__segment reports-distribution__segment--beginner"
+                        style={{ width: `${selectedHorseData.totalRides > 0 ? (selectedHorseData.beginnerRides / selectedHorseData.totalRides * 100) : 0}%` }}
+                        title={`Beginner: ${selectedHorseData.beginnerRides}`}
+                      />
+                      <div 
+                        className="reports-distribution__segment reports-distribution__segment--intermediate"
+                        style={{ width: `${selectedHorseData.totalRides > 0 ? (selectedHorseData.intermediateRides / selectedHorseData.totalRides * 100) : 0}%` }}
+                        title={`Intermediate: ${selectedHorseData.intermediateRides}`}
+                      />
+                      <div 
+                        className="reports-distribution__segment reports-distribution__segment--advanced"
+                        style={{ width: `${selectedHorseData.totalRides > 0 ? (selectedHorseData.advancedRides / selectedHorseData.totalRides * 100) : 0}%` }}
+                        title={`Advanced: ${selectedHorseData.advancedRides}`}
+                      />
+                    </div>
+                    <div className="reports-distribution__legend">
+                      <span className="reports-distribution__legend-item">
+                        <span className="reports-distribution__dot reports-distribution__dot--beginner"></span>
+                        Beginner ({selectedHorseData.totalRides > 0 ? (selectedHorseData.beginnerRides / selectedHorseData.totalRides * 100).toFixed(0) : 0}%)
+                      </span>
+                      <span className="reports-distribution__legend-item">
+                        <span className="reports-distribution__dot reports-distribution__dot--intermediate"></span>
+                        Intermediate ({selectedHorseData.totalRides > 0 ? (selectedHorseData.intermediateRides / selectedHorseData.totalRides * 100).toFixed(0) : 0}%)
+                      </span>
+                      <span className="reports-distribution__legend-item">
+                        <span className="reports-distribution__dot reports-distribution__dot--advanced"></span>
+                        Advanced ({selectedHorseData.totalRides > 0 ? (selectedHorseData.advancedRides / selectedHorseData.totalRides * 100).toFixed(0) : 0}%)
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <div className="reports-detail-card">
+                  <h4>Comparison to Average</h4>
+                  <div className="reports-comparison-stats">
+                    {(() => {
+                      const avgRides = totalRidesAllHorses / (horseAnalytics.length || 1)
+                      const diff = selectedHorseData.totalRides - avgRides
+                      const diffPercent = avgRides > 0 ? (diff / avgRides * 100) : 0
+                      return (
+                        <>
+                          <div className="reports-comparison-stat">
+                            <span className="reports-comparison-stat__label">Average rides per horse</span>
+                            <span className="reports-comparison-stat__value">{avgRides.toFixed(1)}</span>
+                          </div>
+                          <div className="reports-comparison-stat">
+                            <span className="reports-comparison-stat__label">{selectedReportHorse}'s rides</span>
+                            <span className="reports-comparison-stat__value">{selectedHorseData.totalRides}</span>
+                          </div>
+                          <div className={`reports-comparison-stat ${diff >= 0 ? 'reports-comparison-stat--positive' : 'reports-comparison-stat--negative'}`}>
+                            <span className="reports-comparison-stat__label">Difference from average</span>
+                            <span className="reports-comparison-stat__value">
+                              {diff >= 0 ? '+' : ''}{diff.toFixed(1)} ({diffPercent >= 0 ? '+' : ''}{diffPercent.toFixed(0)}%)
+                            </span>
+                          </div>
+                        </>
+                      )
+                    })()}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {allRides.length === 0 && (
+            <div className="reports-empty">
+              <span className="reports-empty__icon">📭</span>
+              <p>No ride data available yet. Check-in riders to generate reports.</p>
+            </div>
+          )}
+        </>
       )}
     </div>
   )
@@ -2188,7 +3310,7 @@ function AdminDashboard() {
       case 'staff':
         return renderPlaceholder('Staff Management')
       case 'reports':
-        return renderPlaceholder('Reports & Analytics')
+        return renderReports()
       case 'settings':
         return renderPlaceholder('Settings')
       default:
@@ -2216,7 +3338,7 @@ function AdminDashboard() {
       {/* Sidebar */}
       <aside className="admin__sidebar">
         <div className="admin__logo">
-          <span className="admin__logo-icon">🐴</span>
+          <img src="/logo.png" alt="Equine Enclave" className="admin__logo-img" />
           <span className="admin__logo-text">Equine Enclave</span>
         </div>
         
@@ -2225,49 +3347,49 @@ function AdminDashboard() {
             className={`admin__nav-item ${activeTab === 'overview' ? 'active' : ''}`}
             onClick={() => setActiveTab('overview')}
           >
-            <span className="admin__nav-icon">📊</span>
+            <span className="admin__nav-icon"><DashboardIcon sx={{ fontSize: 22 }} /></span>
             Overview
           </button>
           <button 
             className={`admin__nav-item ${activeTab === 'horses' ? 'active' : ''}`}
             onClick={() => setActiveTab('horses')}
           >
-            <span className="admin__nav-icon">🐎</span>
+            <span className="admin__nav-icon"><HorseIcon size={22} /></span>
             Horses
           </button>
           <button 
             className={`admin__nav-item ${activeTab === 'riders' ? 'active' : ''}`}
             onClick={() => setActiveTab('riders')}
           >
-            <span className="admin__nav-icon">🏇</span>
+            <span className="admin__nav-icon"><RiderIcon size={22} /></span>
             Riders
           </button>
           <button 
             className={`admin__nav-item ${activeTab === 'bookings' ? 'active' : ''}`}
             onClick={() => setActiveTab('bookings')}
           >
-            <span className="admin__nav-icon">📅</span>
+            <span className="admin__nav-icon"><EventNoteIcon sx={{ fontSize: 22 }} /></span>
             Bookings
           </button>
           <button 
             className={`admin__nav-item ${activeTab === 'staff' ? 'active' : ''}`}
             onClick={() => setActiveTab('staff')}
           >
-            <span className="admin__nav-icon">🧑‍💼</span>
+            <span className="admin__nav-icon"><PeopleIcon sx={{ fontSize: 22 }} /></span>
             Staff
           </button>
           <button 
             className={`admin__nav-item ${activeTab === 'reports' ? 'active' : ''}`}
             onClick={() => setActiveTab('reports')}
           >
-            <span className="admin__nav-icon">📈</span>
+            <span className="admin__nav-icon"><BarChartIcon sx={{ fontSize: 22 }} /></span>
             Reports
           </button>
           <button 
             className={`admin__nav-item ${activeTab === 'settings' ? 'active' : ''}`}
             onClick={() => setActiveTab('settings')}
           >
-            <span className="admin__nav-icon">⚙️</span>
+            <span className="admin__nav-icon"><SettingsIcon sx={{ fontSize: 22 }} /></span>
             Settings
           </button>
         </nav>
@@ -2278,9 +3400,6 @@ function AdminDashboard() {
             <span className="theme-toggle__label">{theme === 'dark' ? 'Dark Mode' : 'Light Mode'}</span>
             <div className="theme-toggle__switch"></div>
           </div>
-          <Link to="/" className="admin__back-link">
-            ← Back to Website
-          </Link>
         </div>
       </aside>
 
@@ -2289,10 +3408,57 @@ function AdminDashboard() {
         {/* Header */}
         <header className="admin__header">
           <div className="admin__header-left">
-            <h1 className="admin__title">{getPageTitle()}</h1>
-            <p className="admin__subtitle">{getPageSubtitle()}</p>
+            <img src="/logo.png" alt="Equine Enclave" className="admin__header-logo" />
+            <div className="admin__header-titles">
+              <h1 className="admin__title">{getPageTitle()}</h1>
+              <p className="admin__subtitle">{getPageSubtitle()}</p>
+            </div>
           </div>
           <div className="admin__header-right">
+            <div className="admin__header-controls">
+              {activeTab === 'riders' && (
+                <div className="max-persons-dropdown">
+                  <span className="max-persons-dropdown__label">Max per Batch:</span>
+                  <div 
+                    className={`max-persons-dropdown__trigger ${maxPersonsDropdownOpen ? 'max-persons-dropdown__trigger--open' : ''}`}
+                    onClick={() => setMaxPersonsDropdownOpen(!maxPersonsDropdownOpen)}
+                  >
+                    <span className="max-persons-dropdown__value">{maxPersonsPerBatch}</span>
+                    <span className="max-persons-dropdown__arrow">▼</span>
+                  </div>
+                  {maxPersonsDropdownOpen && (
+                    <>
+                      <div 
+                        className="max-persons-dropdown__overlay" 
+                        onClick={() => setMaxPersonsDropdownOpen(false)}
+                      />
+                      <div className="max-persons-dropdown__menu">
+                        {[5, 6, 7, 8, 9, 10, 12, 15, 20].map(num => (
+                          <div
+                            key={num}
+                            className={`max-persons-dropdown__item ${maxPersonsPerBatch === num ? 'max-persons-dropdown__item--selected' : ''}`}
+                            onClick={() => {
+                              handleMaxPersonsChange(num)
+                              setMaxPersonsDropdownOpen(false)
+                            }}
+                          >
+                            {num}
+                            {maxPersonsPerBatch === num && <span className="max-persons-dropdown__check">✓</span>}
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+              <button className="admin__logout-btn" onClick={handleLogout} title="Logout">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                  <polyline points="16 17 21 12 16 7"/>
+                  <line x1="21" y1="12" x2="9" y2="12"/>
+                </svg>
+              </button>
+            </div>
             {activeTab === 'riders' && (
               <div className="admin__search">
                 <input 
@@ -2352,22 +3518,28 @@ function AdminDashboard() {
                 )}
               </div>
             )}
-            <div className="admin__user-menu">
-              <div className="admin__user">
-                <div className="admin__avatar">
-                  {adminUser?.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'A'}
-                </div>
-                <span className="admin__user-name">{adminUser?.name || 'Admin'}</span>
-              </div>
-              <button className="admin__logout-btn" onClick={handleLogout} title="Logout">
-                🚪
-              </button>
-            </div>
           </div>
         </header>
 
         {renderContent()}
       </main>
+
+      {/* Toast Notifications */}
+      <div className="toast-container">
+        {toasts.map(toast => (
+          <div 
+            key={toast.id} 
+            className={`toast toast--${toast.type}`}
+            onClick={() => removeToast(toast.id)}
+          >
+            <span className="toast__icon">
+              {toast.type === 'success' ? '✓' : '✕'}
+            </span>
+            <span className="toast__message">{toast.message}</span>
+            <button className="toast__close" onClick={() => removeToast(toast.id)}>×</button>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
