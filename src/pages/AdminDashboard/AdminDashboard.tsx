@@ -117,6 +117,29 @@ interface Toast {
   type: 'success' | 'error'
 }
 
+interface RideRecord {
+  _id: string
+  rideTime: string
+  riderName: string
+  riderId: string
+  riderLevel: 'beginner' | 'intermediate' | 'advanced'
+  horse: string
+  batchType: string
+  batchName: string
+}
+
+interface HorseAnalytics {
+  horseName: string
+  totalRides: number
+  beginnerRides: number
+  intermediateRides: number
+  advancedRides: number
+  totalHours: number
+  beginnerHours: number
+  intermediateHours: number
+  advancedHours: number
+}
+
 function AdminDashboard() {
   const navigate = useNavigate()
   const [isAuthenticated, setIsAuthenticated] = useState(false)
@@ -207,6 +230,18 @@ function AdminDashboard() {
   
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  
+  // Batch states
+  const [morningBatches, setMorningBatches] = useState<Batch[]>([])
+  const [eveningBatches, setEveningBatches] = useState<Batch[]>([])
+  
+  // Today's check-ins count by batch type (resets daily)
+  const [todayCheckins, setTodayCheckins] = useState<{ morning: number; evening: number }>({ morning: 0, evening: 0 })
+  
+  // Reports state
+  const [allRides, setAllRides] = useState<RideRecord[]>([])
+  const [selectedReportHorse, setSelectedReportHorse] = useState<string>('')
+  const [reportsLoading, setReportsLoading] = useState(false)
   
   // Toast notifications
   const [toasts, setToasts] = useState<Toast[]>([])
@@ -585,9 +620,26 @@ function AdminDashboard() {
     }
   }
 
+  // Fetch today's check-ins from API
+  const fetchTodayCheckins = async () => {
+    try {
+      // Send timezone offset to ensure "today" is calculated in user's local timezone
+      const tzOffset = new Date().getTimezoneOffset()
+      const response = await fetch(`${API_BASE_URL}/rides/stats/summary?tzOffset=${tzOffset}`)
+      const result = await response.json()
+      
+      if (result.success && result.data.todayCheckins) {
+        setTodayCheckins(result.data.todayCheckins)
+      }
+    } catch (err) {
+      console.error('Error fetching today\'s check-ins:', err)
+    }
+  }
+
   // Fetch data on component mount
   useEffect(() => {
     fetchBatches()
+    fetchTodayCheckins()
   }, [])
   
   // Fetch rides when reports tab is active
@@ -623,38 +675,6 @@ function AdminDashboard() {
     { id: 9, name: 'Virat', breed: 'Marwari', age: 7, color: 'Bay', stall: 'A-01', status: 'healthy', lastCheckup: '2025-12-01', notes: 'Excellent condition, very energetic' },
   ]
 
-  const [morningBatches, setMorningBatches] = useState<Batch[]>([])
-
-  const [eveningBatches, setEveningBatches] = useState<Batch[]>([])
-
-  // Reports state
-  interface RideRecord {
-    _id: string
-    rideTime: string
-    riderName: string
-    riderId: string
-    riderLevel: 'beginner' | 'intermediate' | 'advanced'
-    horse: string
-    batchType: string
-    batchName: string
-  }
-  
-  interface HorseAnalytics {
-    horseName: string
-    totalRides: number
-    beginnerRides: number
-    intermediateRides: number
-    advancedRides: number
-    totalHours: number
-    beginnerHours: number
-    intermediateHours: number
-    advancedHours: number
-  }
-  
-  const [allRides, setAllRides] = useState<RideRecord[]>([])
-  const [selectedReportHorse, setSelectedReportHorse] = useState<string>('')
-  const [reportsLoading, setReportsLoading] = useState(false)
-
   // Helper function to check if rider needs to pay (activeClassesCount >= 26)
   const needsToPay = (rider: Rider) => rider.activeClassesCount >= 26
 
@@ -665,6 +685,37 @@ function AdminDashboard() {
     const month = months[date.getMonth()]
     const year = date.getFullYear()
     return `${month}${year}`
+  }
+
+  // Check if rider has already checked in today (latest checkin is always the last item)
+  const hasCheckedInToday = (rider: Rider) => {
+    if (!rider.checkins || rider.checkins.length === 0) return false
+    
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    
+    const lastCheckin = rider.checkins[rider.checkins.length - 1]
+    const checkinDate = new Date(lastCheckin.checkinTime)
+    checkinDate.setHours(0, 0, 0, 0)
+    
+    return checkinDate.getTime() === today.getTime()
+  }
+
+  // Get horse name from today's check-in (returns null if not checked in today)
+  const getTodayCheckinHorse = (rider: Rider): string | null => {
+    if (!rider.checkins || rider.checkins.length === 0) return null
+    
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    
+    const lastCheckin = rider.checkins[rider.checkins.length - 1]
+    const checkinDate = new Date(lastCheckin.checkinTime)
+    checkinDate.setHours(0, 0, 0, 0)
+    
+    if (checkinDate.getTime() === today.getTime()) {
+      return lastCheckin.horse
+    }
+    return null
   }
 
   // Check if rider is currently in session (last check-in < 45 minutes ago)
@@ -1154,6 +1205,7 @@ function AdminDashboard() {
       
       if (result.success) {
         await fetchBatches() // Refresh data
+        await fetchTodayCheckins() // Refresh today's check-ins count
         setCheckinModal({ isOpen: false, rider: null, batchType: 'morning', batchIndex: 0, selectedHorse: '' })
         setHorseDropdownOpen(false)
         setFormErrors(prev => ({ ...prev, checkin: {} }))
@@ -1455,11 +1507,17 @@ function AdminDashboard() {
           <span className="riders-stat__label">Total Riders</span>
         </div>
         <div className="riders-stat riders-stat--morning">
-          <span className="riders-stat__value">{morningBatches.reduce((acc, b) => acc + (b?.riders?.length || 0), 0)}</span>
+          <div className="riders-stat__values">
+            <span className="riders-stat__value">{morningBatches.reduce((acc, b) => acc + (b?.riders?.length || 0), 0)}</span>
+            <span className="riders-stat__checkin" title="Checked in today">({todayCheckins.morning} today)</span>
+          </div>
           <span className="riders-stat__label">Morning Batch</span>
         </div>
         <div className="riders-stat riders-stat--evening">
-          <span className="riders-stat__value">{eveningBatches.reduce((acc, b) => acc + (b?.riders?.length || 0), 0)}</span>
+          <div className="riders-stat__values">
+            <span className="riders-stat__value">{eveningBatches.reduce((acc, b) => acc + (b?.riders?.length || 0), 0)}</span>
+            <span className="riders-stat__checkin" title="Checked in today">({todayCheckins.evening} today)</span>
+          </div>
           <span className="riders-stat__label">Evening Batch</span>
         </div>
       </div>
@@ -1681,9 +1739,14 @@ function AdminDashboard() {
                             <tr key={rider.id}>
                               <td>
                                 <div className="rider-name">
-                                  {isRiderInSession(rider) && <span className="session-indicator session-indicator--active" title="Currently in session"></span>}
-                                  {!isRiderInSession(rider) && hasRiddenToday(rider) && <span className="session-indicator session-indicator--completed" title="Completed ride today"></span>}
-                                  {rider.name}
+                                  <span className="rider-name__row">
+                                    {isRiderInSession(rider) && <span className="session-indicator session-indicator--active" title="Currently in session"></span>}
+                                    {!isRiderInSession(rider) && hasRiddenToday(rider) && <span className="session-indicator session-indicator--completed" title="Completed ride today"></span>}
+                                    {rider.name}
+                                  </span>
+                                  {getTodayCheckinHorse(rider) && (
+                                    <span className="rider-horse-today">{getTodayCheckinHorse(rider)}</span>
+                                  )}
                                 </div>
                               </td>
                               <td>{rider.age} yrs</td>
@@ -1701,11 +1764,11 @@ function AdminDashboard() {
                               <td>
                                 <div className="rider-actions">
                                   <button 
-                                    className="checkin-btn"
+                                    className={`checkin-btn ${hasCheckedInToday(rider) ? 'checkin-btn--again' : ''}`}
                                     onClick={() => setCheckinModal({ isOpen: true, rider, batchType: 'morning', batchIndex: index, selectedHorse: '' })}
-                                    title="Check-in"
+                                    title={hasCheckedInToday(rider) ? "Already checked in today" : "Check-in"}
                                   >
-                                    Check-in
+                                    {hasCheckedInToday(rider) ? 'Check-in Again' : 'Check-in'}
                                   </button>
                                   <button 
                                     className="assign-btn"
@@ -1833,9 +1896,14 @@ function AdminDashboard() {
                             <tr key={rider.id}>
                               <td>
                                 <div className="rider-name">
-                                  {isRiderInSession(rider) && <span className="session-indicator session-indicator--active" title="Currently in session"></span>}
-                                  {!isRiderInSession(rider) && hasRiddenToday(rider) && <span className="session-indicator session-indicator--completed" title="Completed ride today"></span>}
-                                  {rider.name}
+                                  <span className="rider-name__row">
+                                    {isRiderInSession(rider) && <span className="session-indicator session-indicator--active" title="Currently in session"></span>}
+                                    {!isRiderInSession(rider) && hasRiddenToday(rider) && <span className="session-indicator session-indicator--completed" title="Completed ride today"></span>}
+                                    {rider.name}
+                                  </span>
+                                  {getTodayCheckinHorse(rider) && (
+                                    <span className="rider-horse-today">{getTodayCheckinHorse(rider)}</span>
+                                  )}
                                 </div>
                               </td>
                               <td>{rider.age} yrs</td>
@@ -1853,11 +1921,11 @@ function AdminDashboard() {
                               <td>
                                 <div className="rider-actions">
                                   <button 
-                                    className="checkin-btn"
+                                    className={`checkin-btn ${hasCheckedInToday(rider) ? 'checkin-btn--again' : ''}`}
                                     onClick={() => setCheckinModal({ isOpen: true, rider, batchType: 'evening', batchIndex: index, selectedHorse: '' })}
-                                    title="Check-in"
+                                    title={hasCheckedInToday(rider) ? "Already checked in today" : "Check-in"}
                                   >
-                                    Check-in
+                                    {hasCheckedInToday(rider) ? 'Check-in Again' : 'Check-in'}
                                   </button>
                                   <button 
                                     className="assign-btn"

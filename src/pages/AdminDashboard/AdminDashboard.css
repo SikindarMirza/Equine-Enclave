@@ -2000,6 +2000,28 @@
   color: #9b59b6;
 }
 
+.riders-stat__values {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.riders-stat__checkin {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+  opacity: 0.85;
+}
+
+.riders-stat--morning .riders-stat__checkin {
+  color: #e8a83a;
+}
+
+.riders-stat--evening .riders-stat__checkin {
+  color: #a76dbe;
+}
+
 /* Riders Filters */
 .riders-filters {
   display: flex;
@@ -2789,8 +2811,23 @@
 
 .rider-name {
   display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0;
+}
+
+.rider-name__row {
+  display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.5rem;
+}
+
+/* Horse name for today's check-in */
+.rider-horse-today {
+  font-size: 0.7rem;
+  color: #d4af37;
+  font-weight: 600;
+  margin-left: 1.3rem;
 }
 
 /* Session Indicator - Rider status indicators */
@@ -3011,6 +3048,15 @@
 .checkin-btn:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(46, 204, 113, 0.4);
+}
+
+/* Check-in Again Button (already checked in today) */
+.checkin-btn--again {
+  background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+}
+
+.checkin-btn--again:hover {
+  box-shadow: 0 4px 12px rgba(243, 156, 18, 0.4);
 }
 
 /* ===========================
@@ -4576,6 +4622,14 @@
     white-space: nowrap;
   }
   
+  .riders-stat__values {
+    gap: 0.25rem;
+  }
+  
+  .riders-stat__checkin {
+    font-size: 0.65rem;
+  }
+  
   /* Filters */
   .riders-filters {
     flex-direction: row;
@@ -5317,6 +5371,10 @@
   }
   
   .riders-stat__label {
+    font-size: 0.55rem;
+  }
+  
+  .riders-stat__checkin {
     font-size: 0.55rem;
   }
   
