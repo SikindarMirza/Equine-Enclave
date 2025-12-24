@@ -117,6 +117,29 @@ interface Toast {
   type: 'success' | 'error'
 }
 
+interface RideRecord {
+  _id: string
+  rideTime: string
+  riderName: string
+  riderId: string
+  riderLevel: 'beginner' | 'intermediate' | 'advanced'
+  horse: string
+  batchType: string
+  batchName: string
+}
+
+interface HorseAnalytics {
+  horseName: string
+  totalRides: number
+  beginnerRides: number
+  intermediateRides: number
+  advancedRides: number
+  totalHours: number
+  beginnerHours: number
+  intermediateHours: number
+  advancedHours: number
+}
+
 function AdminDashboard() {
   const navigate = useNavigate()
   const [isAuthenticated, setIsAuthenticated] = useState(false)
@@ -207,6 +230,18 @@ function AdminDashboard() {
   
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  
+  // Batch states
+  const [morningBatches, setMorningBatches] = useState<Batch[]>([])
+  const [eveningBatches, setEveningBatches] = useState<Batch[]>([])
+  
+  // Today's check-ins count by batch type (resets daily)
+  const [todayCheckins, setTodayCheckins] = useState<{ morning: number; evening: number }>({ morning: 0, evening: 0 })
+  
+  // Reports state
+  const [allRides, setAllRides] = useState<RideRecord[]>([])
+  const [selectedReportHorse, setSelectedReportHorse] = useState<string>('')
+  const [reportsLoading, setReportsLoading] = useState(false)
   
   // Toast notifications
   const [toasts, setToasts] = useState<Toast[]>([])
@@ -585,9 +620,26 @@ function AdminDashboard() {
     }
   }
 
+  // Fetch today's check-ins from API
+  const fetchTodayCheckins = async () => {
+    try {
+      // Send timezone offset to ensure "today" is calculated in user's local timezone
+      const tzOffset = new Date().getTimezoneOffset()
+      const response = await fetch(`${API_BASE_URL}/rides/stats/summary?tzOffset=${tzOffset}`)
+      const result = await response.json()
+      
+      if (result.success && result.data.todayCheckins) {
+        setTodayCheckins(result.data.todayCheckins)
+      }
+    } catch (err) {
+      console.error('Error fetching today\'s check-ins:', err)
+    }
+  }
+
   // Fetch data on component mount
   useEffect(() => {
     fetchBatches()
+    fetchTodayCheckins()
   }, [])
   
   // Fetch rides when reports tab is active
@@ -622,38 +674,6 @@ function AdminDashboard() {
     { id: 8, name: 'Antilope', breed: 'Thoroughbred', age: 6, color: 'Grey', stall: 'C-02', status: 'healthy', lastCheckup: '2025-12-02', notes: 'Dressage specialist, very graceful' },
     { id: 9, name: 'Virat', breed: 'Marwari', age: 7, color: 'Bay', stall: 'A-01', status: 'healthy', lastCheckup: '2025-12-01', notes: 'Excellent condition, very energetic' },
   ]
-
-  const [morningBatches, setMorningBatches] = useState<Batch[]>([])
-
-  const [eveningBatches, setEveningBatches] = useState<Batch[]>([])
-
-  // Reports state
-  interface RideRecord {
-    _id: string
-    rideTime: string
-    riderName: string
-    riderId: string
-    riderLevel: 'beginner' | 'intermediate' | 'advanced'
-    horse: string
-    batchType: string
-    batchName: string
-  }
-  
-  interface HorseAnalytics {
-    horseName: string
-    totalRides: number
-    beginnerRides: number
-    intermediateRides: number
-    advancedRides: number
-    totalHours: number
-    beginnerHours: number
-    intermediateHours: number
-    advancedHours: number
-  }
-  
-  const [allRides, setAllRides] = useState<RideRecord[]>([])
-  const [selectedReportHorse, setSelectedReportHorse] = useState<string>('')
-  const [reportsLoading, setReportsLoading] = useState(false)
 
   // Helper function to check if rider needs to pay (activeClassesCount >= 26)
   const needsToPay = (rider: Rider) => rider.activeClassesCount >= 26
@@ -1154,6 +1174,7 @@ function AdminDashboard() {
       
       if (result.success) {
         await fetchBatches() // Refresh data
+        await fetchTodayCheckins() // Refresh today's check-ins count
         setCheckinModal({ isOpen: false, rider: null, batchType: 'morning', batchIndex: 0, selectedHorse: '' })
         setHorseDropdownOpen(false)
         setFormErrors(prev => ({ ...prev, checkin: {} }))
@@ -1455,11 +1476,17 @@ function AdminDashboard() {
           <span className="riders-stat__label">Total Riders</span>
         </div>
         <div className="riders-stat riders-stat--morning">
-          <span className="riders-stat__value">{morningBatches.reduce((acc, b) => acc + (b?.riders?.length || 0), 0)}</span>
+          <div className="riders-stat__values">
+            <span className="riders-stat__value">{morningBatches.reduce((acc, b) => acc + (b?.riders?.length || 0), 0)}</span>
+            <span className="riders-stat__checkin" title="Checked in today">({todayCheckins.morning} today)</span>
+          </div>
           <span className="riders-stat__label">Morning Batch</span>
         </div>
         <div className="riders-stat riders-stat--evening">
-          <span className="riders-stat__value">{eveningBatches.reduce((acc, b) => acc + (b?.riders?.length || 0), 0)}</span>
+          <div className="riders-stat__values">
+            <span className="riders-stat__value">{eveningBatches.reduce((acc, b) => acc + (b?.riders?.length || 0), 0)}</span>
+            <span className="riders-stat__checkin" title="Checked in today">({todayCheckins.evening} today)</span>
+          </div>
           <span className="riders-stat__label">Evening Batch</span>
         </div>
       </div>

@@ -2000,6 +2000,28 @@
   color: #9b59b6;
 }
 
+.riders-stat__values {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.riders-stat__checkin {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+  opacity: 0.85;
+}
+
+.riders-stat--morning .riders-stat__checkin {
+  color: #e8a83a;
+}
+
+.riders-stat--evening .riders-stat__checkin {
+  color: #a76dbe;
+}
+
 /* Riders Filters */
 .riders-filters {
   display: flex;
@@ -4576,6 +4598,14 @@
     white-space: nowrap;
   }
   
+  .riders-stat__values {
+    gap: 0.25rem;
+  }
+  
+  .riders-stat__checkin {
+    font-size: 0.65rem;
+  }
+  
   /* Filters */
   .riders-filters {
     flex-direction: row;
@@ -5317,6 +5347,10 @@
   }
   
   .riders-stat__label {
+    font-size: 0.55rem;
+  }
+  
+  .riders-stat__checkin {
     font-size: 0.55rem;
   }
   
