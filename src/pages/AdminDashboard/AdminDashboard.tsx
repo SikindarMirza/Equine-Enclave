@@ -687,6 +687,37 @@ function AdminDashboard() {
     return `${month}${year}`
   }
 
+  // Check if rider has already checked in today (latest checkin is always the last item)
+  const hasCheckedInToday = (rider: Rider) => {
+    if (!rider.checkins || rider.checkins.length === 0) return false
+    
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    
+    const lastCheckin = rider.checkins[rider.checkins.length - 1]
+    const checkinDate = new Date(lastCheckin.checkinTime)
+    checkinDate.setHours(0, 0, 0, 0)
+    
+    return checkinDate.getTime() === today.getTime()
+  }
+
+  // Get horse name from today's check-in (returns null if not checked in today)
+  const getTodayCheckinHorse = (rider: Rider): string | null => {
+    if (!rider.checkins || rider.checkins.length === 0) return null
+    
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    
+    const lastCheckin = rider.checkins[rider.checkins.length - 1]
+    const checkinDate = new Date(lastCheckin.checkinTime)
+    checkinDate.setHours(0, 0, 0, 0)
+    
+    if (checkinDate.getTime() === today.getTime()) {
+      return lastCheckin.horse
+    }
+    return null
+  }
+
   // Check if rider is currently in session (last check-in < 45 minutes ago)
   const isRiderInSession = (rider: Rider) => {
     if (!rider.checkins || rider.checkins.length === 0) return false
@@ -1708,9 +1739,14 @@ function AdminDashboard() {
                             <tr key={rider.id}>
                               <td>
                                 <div className="rider-name">
-                                  {isRiderInSession(rider) && <span className="session-indicator session-indicator--active" title="Currently in session"></span>}
-                                  {!isRiderInSession(rider) && hasRiddenToday(rider) && <span className="session-indicator session-indicator--completed" title="Completed ride today"></span>}
-                                  {rider.name}
+                                  <span className="rider-name__row">
+                                    {isRiderInSession(rider) && <span className="session-indicator session-indicator--active" title="Currently in session"></span>}
+                                    {!isRiderInSession(rider) && hasRiddenToday(rider) && <span className="session-indicator session-indicator--completed" title="Completed ride today"></span>}
+                                    {rider.name}
+                                  </span>
+                                  {getTodayCheckinHorse(rider) && (
+                                    <span className="rider-horse-today">{getTodayCheckinHorse(rider)}</span>
+                                  )}
                                 </div>
                               </td>
                               <td>{rider.age} yrs</td>
@@ -1728,11 +1764,11 @@ function AdminDashboard() {
                               <td>
                                 <div className="rider-actions">
                                   <button 
-                                    className="checkin-btn"
+                                    className={`checkin-btn ${hasCheckedInToday(rider) ? 'checkin-btn--again' : ''}`}
                                     onClick={() => setCheckinModal({ isOpen: true, rider, batchType: 'morning', batchIndex: index, selectedHorse: '' })}
-                                    title="Check-in"
+                                    title={hasCheckedInToday(rider) ? "Already checked in today" : "Check-in"}
                                   >
-                                    Check-in
+                                    {hasCheckedInToday(rider) ? 'Check-in Again' : 'Check-in'}
                                   </button>
                                   <button 
                                     className="assign-btn"
@@ -1860,9 +1896,14 @@ function AdminDashboard() {
                             <tr key={rider.id}>
                               <td>
                                 <div className="rider-name">
-                                  {isRiderInSession(rider) && <span className="session-indicator session-indicator--active" title="Currently in session"></span>}
-                                  {!isRiderInSession(rider) && hasRiddenToday(rider) && <span className="session-indicator session-indicator--completed" title="Completed ride today"></span>}
-                                  {rider.name}
+                                  <span className="rider-name__row">
+                                    {isRiderInSession(rider) && <span className="session-indicator session-indicator--active" title="Currently in session"></span>}
+                                    {!isRiderInSession(rider) && hasRiddenToday(rider) && <span className="session-indicator session-indicator--completed" title="Completed ride today"></span>}
+                                    {rider.name}
+                                  </span>
+                                  {getTodayCheckinHorse(rider) && (
+                                    <span className="rider-horse-today">{getTodayCheckinHorse(rider)}</span>
+                                  )}
                                 </div>
                               </td>
                               <td>{rider.age} yrs</td>
@@ -1880,11 +1921,11 @@ function AdminDashboard() {
                               <td>
                                 <div className="rider-actions">
                                   <button 
-                                    className="checkin-btn"
+                                    className={`checkin-btn ${hasCheckedInToday(rider) ? 'checkin-btn--again' : ''}`}
                                     onClick={() => setCheckinModal({ isOpen: true, rider, batchType: 'evening', batchIndex: index, selectedHorse: '' })}
-                                    title="Check-in"
+                                    title={hasCheckedInToday(rider) ? "Already checked in today" : "Check-in"}
                                   >
-                                    Check-in
+                                    {hasCheckedInToday(rider) ? 'Check-in Again' : 'Check-in'}
                                   </button>
                                   <button 
                                     className="assign-btn"
