@@ -12,6 +12,7 @@ import EditIcon from '@mui/icons-material/Edit'
 import WbSunnyIcon from '@mui/icons-material/WbSunny'
 import NightsStayIcon from '@mui/icons-material/NightsStay'
 import RefreshIcon from '@mui/icons-material/Refresh'
+import DownloadIcon from '@mui/icons-material/Download'
 import DirectionsWalkIcon from '@mui/icons-material/DirectionsWalk'
 import TrendingUpIcon from '@mui/icons-material/TrendingUp'
 import MilitaryTechIcon from '@mui/icons-material/MilitaryTech'
@@ -250,6 +251,8 @@ function AdminDashboard() {
   const [allRides, setAllRides] = useState<RideRecord[]>([])
   const [selectedReportHorse, setSelectedReportHorse] = useState<string>('')
   const [reportsLoading, setReportsLoading] = useState(false)
+  const [reportPeriod, setReportPeriod] = useState<'1day' | '1week' | '1month' | '2months' | '3months'>('1day')
+  const [reportPeriodDropdownOpen, setReportPeriodDropdownOpen] = useState(false)
   
   // Toast notifications
   const [toasts, setToasts] = useState<Toast[]>([])
@@ -763,35 +766,89 @@ function AdminDashboard() {
   }
 
   // Export rider check-in history to PDF
-  const exportRiderPDF = (rider: Rider, batchType: 'morning' | 'evening', batchIndex: number) => {
+  const exportRiderPDF = async (rider: Rider, batchType: 'morning' | 'evening', batchIndex: number) => {
     const doc = new jsPDF()
     const pageWidth = doc.internal.pageSize.getWidth()
+    
+    // Load logo image with dimensions
+    const loadLogo = (): Promise<{ data: string; width: number; height: number }> => {
+      return new Promise((resolve, reject) => {
+        const img = new Image()
+        img.crossOrigin = 'anonymous'
+        img.onload = () => {
+          const canvas = document.createElement('canvas')
+          canvas.width = img.width
+          canvas.height = img.height
+          const ctx = canvas.getContext('2d')
+          ctx?.drawImage(img, 0, 0)
+          resolve({
+            data: canvas.toDataURL('image/png'),
+            width: img.width,
+            height: img.height
+          })
+        }
+        img.onerror = reject
+        img.src = '/logo.png'
+      })
+    }
+    
+    let logoData: string | null = null
+    let logoWidth = 0
+    let logoHeight = 0
+    try {
+      const logo = await loadLogo()
+      logoData = logo.data
+      logoWidth = logo.width
+      logoHeight = logo.height
+    } catch (e) {
+      console.warn('Could not load logo:', e)
+    }
     
     // Get batch name
     const batches = batchType === 'morning' ? morningBatches : eveningBatches
     const batchName = batches[batchIndex]?.name || `Batch ${batchIndex + 1}`
     
-    // Title
+    // Header with logo
+    doc.setFillColor(26, 26, 46)
+    const headerHeight = 48
+    doc.rect(0, 0, pageWidth, headerHeight, 'F')
+    
+    // Add logo if loaded - preserve natural aspect ratio
+    if (logoData && logoWidth > 0 && logoHeight > 0) {
+      const targetHeight = 40 // Target height in PDF units
+      const aspectRatio = logoWidth / logoHeight
+      const targetWidth = targetHeight * aspectRatio
+      const logoY = (headerHeight - targetHeight) / 2 // Center vertically
+      doc.addImage(logoData, 'PNG', 8, logoY, targetWidth, targetHeight)
+    }
+    
+    doc.setTextColor(212, 175, 55)
     doc.setFontSize(20)
     doc.setFont('helvetica', 'bold')
-    doc.text('Equine Enclave', pageWidth / 2, 20, { align: 'center' })
+    doc.text('Equine Enclave', pageWidth / 2, 18, { align: 'center' })
     
-    doc.setFontSize(14)
+    doc.setTextColor(255, 255, 255)
+    doc.setFontSize(12)
     doc.setFont('helvetica', 'normal')
     doc.text('Classes Check-in Report', pageWidth / 2, 30, { align: 'center' })
     
-    // Horizontal line
-    doc.setLineWidth(0.5)
-    doc.line(20, 35, pageWidth - 20, 35)
+    doc.setFontSize(9)
+    doc.text(`Generated on ${new Date().toLocaleDateString('en-IN')}`, pageWidth / 2, 40, { align: 'center' })
     
     // Rider details section
-    doc.setFontSize(12)
-    doc.setFont('helvetica', 'bold')
-    doc.text('Rider Details', 20, 45)
+    doc.setTextColor(0, 0, 0)
+    let y = 58
     
+    // Section header with colored bar (matching daily report style)
+    const riderSectionColor: [number, number, number] = [52, 152, 219] // Blue color for Rider Details
+    doc.setFillColor(...riderSectionColor)
+    doc.rect(20, y - 5, 4, 12, 'F')
+    doc.setFontSize(14)
+    doc.setFont('helvetica', 'bold')
+    doc.text('Rider Details', 28, y + 3)
+    y += 15
     doc.setFontSize(10)
     doc.setFont('helvetica', 'normal')
-    let y = 55
     doc.text(`Name: ${rider.name}`, 20, y)
     doc.text(`Age: ${rider.age} years`, 120, y)
     y += 8
@@ -813,45 +870,48 @@ function AdminDashboard() {
     
     // Check-ins section
     y += 15
-    doc.setLineWidth(0.3)
-    doc.line(20, y, pageWidth - 20, y)
-    y += 10
     
-    doc.setFontSize(12)
+    // Section header with colored bar (matching daily report style)
+    const sectionColor: [number, number, number] = [212, 175, 55] // Gold color for Check-in History
+    doc.setFillColor(...sectionColor)
+    doc.rect(20, y - 5, 4, 12, 'F')
+    doc.setFontSize(14)
     doc.setFont('helvetica', 'bold')
-    doc.text('Check-in History', 20, y)
-    y += 10
+    doc.setTextColor(0, 0, 0)
+    doc.text(`Check-in History (${sortedCheckins.length} rides)`, 28, y + 3)
+    y += 15
     
-    // Table headers
+    // Table headers with light gray background (matching daily report style)
     doc.setFontSize(9)
     doc.setFont('helvetica', 'bold')
-    doc.text('Ride #', 20, y)
+    doc.setFillColor(245, 245, 245)
+    doc.rect(20, y - 4, pageWidth - 40, 8, 'F')
+    doc.text('Ride #', 22, y)
     doc.text('Date', 50, y)
     doc.text('Time', 100, y)
     doc.text('Horse', 140, y)
-    y += 3
-    doc.setLineWidth(0.2)
-    doc.line(20, y, pageWidth - 20, y)
-    y += 7
+    y += 8
     
     // Table rows
     doc.setFont('helvetica', 'normal')
     
     sortedCheckins.forEach((checkin, index) => {
       // Check if we need a new page
-      if (y > 270) {
+      if (y > 280) {
         doc.addPage()
         y = 20
-        // Re-add headers on new page
+        // Re-add headers on new page with same styling
+        doc.setFontSize(9)
         doc.setFont('helvetica', 'bold')
-        doc.text('Ride #', 20, y)
+        doc.setFillColor(245, 245, 245)
+        doc.rect(20, y - 4, pageWidth - 40, 8, 'F')
+        doc.text('Ride #', 22, y)
         doc.text('Date', 50, y)
         doc.text('Time', 100, y)
         doc.text('Horse', 140, y)
-        y += 3
-        doc.line(20, y, pageWidth - 20, y)
-        y += 7
+        y += 8
         doc.setFont('helvetica', 'normal')
+        doc.setFontSize(8)
       }
       
       const checkinDate = new Date(checkin.checkinTime)
@@ -868,23 +928,24 @@ function AdminDashboard() {
       
       // Number from total unpaid count (top is highest, goes down)
       const displayNumber = sortedCheckins.length - index
-      doc.text(String(displayNumber), 20, y)
+      doc.text(String(displayNumber), 22, y)
       doc.text(dateStr, 50, y)
       doc.text(timeStr, 100, y)
       doc.text(checkin.horse || 'N/A', 140, y)
-      y += 7
+      y += 6
     })
     
     if (sortedCheckins.length === 0) {
       doc.text('No unpaid check-ins to display.', 20, y)
     }
     
-    // Footer
+    // Footer on all pages
     const pageCount = doc.getNumberOfPages()
     for (let i = 1; i <= pageCount; i++) {
       doc.setPage(i)
       doc.setFontSize(8)
       doc.setFont('helvetica', 'italic')
+      doc.setTextColor(128, 128, 128)
       doc.text(
         `Generated on ${new Date().toLocaleString('en-IN')} | Page ${i} of ${pageCount}`,
         pageWidth / 2,
@@ -896,6 +957,263 @@ function AdminDashboard() {
     // Save the PDF
     const fileName = `${rider.name.replace(/\s+/g, '_')}_checkins_${new Date().toISOString().split('T')[0]}.pdf`
     doc.save(fileName)
+  }
+
+  // Download rides report PDF
+  const downloadRidesReport = async () => {
+    const doc = new jsPDF()
+    const pageWidth = doc.internal.pageSize.getWidth()
+    
+    // Load logo image with dimensions
+    const loadLogo = (): Promise<{ data: string; width: number; height: number }> => {
+      return new Promise((resolve, reject) => {
+        const img = new Image()
+        img.crossOrigin = 'anonymous'
+        img.onload = () => {
+          const canvas = document.createElement('canvas')
+          canvas.width = img.width
+          canvas.height = img.height
+          const ctx = canvas.getContext('2d')
+          ctx?.drawImage(img, 0, 0)
+          resolve({
+            data: canvas.toDataURL('image/png'),
+            width: img.width,
+            height: img.height
+          })
+        }
+        img.onerror = reject
+        img.src = '/logo.png'
+      })
+    }
+    
+    let logoData: string | null = null
+    let logoWidth = 0
+    let logoHeight = 0
+    try {
+      const logo = await loadLogo()
+      logoData = logo.data
+      logoWidth = logo.width
+      logoHeight = logo.height
+    } catch (e) {
+      console.warn('Could not load logo:', e)
+    }
+    
+    // Calculate date range based on selected period
+    const now = new Date()
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    
+    // Helper function to get date string (YYYY-MM-DD) in local timezone
+    const getDateString = (date: Date): string => {
+      const year = date.getFullYear()
+      const month = String(date.getMonth() + 1).padStart(2, '0')
+      const day = String(date.getDate()).padStart(2, '0')
+      return `${year}-${month}-${day}`
+    }
+    
+    const todayString = getDateString(today)
+    let startDate: Date
+    let endDate: Date = now
+    
+    switch (reportPeriod) {
+      case '1day':
+        // Today only - compare by date string
+        startDate = new Date(today)
+        break
+      case '1week':
+        startDate = new Date(today)
+        startDate.setDate(startDate.getDate() - 6) // Last 7 days including today
+        break
+      case '1month':
+        startDate = new Date(today)
+        startDate.setMonth(startDate.getMonth() - 1)
+        break
+      case '2months':
+        startDate = new Date(today)
+        startDate.setMonth(startDate.getMonth() - 2)
+        break
+      case '3months':
+        startDate = new Date(today)
+        startDate.setMonth(startDate.getMonth() - 3)
+        break
+    }
+    
+    // Filter rides within the date range - loop from last to first for optimization
+    // Since rides are added chronologically, newest rides are at the end
+    const filteredRides: RideRecord[] = []
+    
+    for (let i = allRides.length - 1; i >= 0; i--) {
+      const ride = allRides[i]
+      const rideDate = new Date(ride.rideTime)
+      
+      // For "today" period, compare by date string to handle timezone correctly
+      if (reportPeriod === '1day') {
+        const rideDateString = getDateString(rideDate)
+        if (rideDateString === todayString) {
+          filteredRides.unshift(ride)
+        }
+        // Don't break early for "today" - check all rides to be safe
+        // (Rides might not be perfectly sorted or might have timezone issues)
+      } else {
+        // For other periods, use date comparison with early break optimization
+        if (rideDate >= startDate && rideDate <= endDate) {
+          filteredRides.unshift(ride)
+        } else if (rideDate < startDate) {
+          // If this ride is before startDate, all older rides (going backwards) will also be before startDate
+          break
+        }
+        // If rideDate > endDate (future date), continue to next ride
+      }
+    }
+    
+    // Group rides by batch type and batch name
+    const morningRides = filteredRides.filter(r => r.batchType === 'morning')
+    const eveningRides = filteredRides.filter(r => r.batchType === 'evening')
+    
+    // Period label
+    const periodLabels: Record<string, string> = {
+      '1day': 'Today',
+      '1week': 'Last 7 Days',
+      '1month': 'Last 1 Month',
+      '2months': 'Last 2 Months',
+      '3months': 'Last 3 Months'
+    }
+    
+    // Header with logo
+    doc.setFillColor(26, 26, 46)
+    const headerHeight = 48
+    doc.rect(0, 0, pageWidth, headerHeight, 'F')
+    
+    // Add logo if loaded - preserve natural aspect ratio
+    if (logoData && logoWidth > 0 && logoHeight > 0) {
+      const targetHeight = 40 // Target height in PDF units
+      const aspectRatio = logoWidth / logoHeight
+      const targetWidth = targetHeight * aspectRatio
+      const logoY = (headerHeight - targetHeight) / 2 // Center vertically
+      doc.addImage(logoData, 'PNG', 8, logoY, targetWidth, targetHeight)
+    }
+    
+    doc.setTextColor(212, 175, 55)
+    doc.setFontSize(20)
+    doc.setFont('helvetica', 'bold')
+    doc.text('Equine Enclave', pageWidth / 2, 18, { align: 'center' })
+    
+    doc.setTextColor(255, 255, 255)
+    doc.setFontSize(12)
+    doc.setFont('helvetica', 'normal')
+    doc.text(`Rides Report - ${periodLabels[reportPeriod]}`, pageWidth / 2, 30, { align: 'center' })
+    
+    doc.setFontSize(9)
+    doc.text(`${startDate.toLocaleDateString('en-IN')} to ${now.toLocaleDateString('en-IN')}`, pageWidth / 2, 40, { align: 'center' })
+    
+    doc.setTextColor(0, 0, 0)
+    let y = 58
+    
+    // Summary
+    doc.setFontSize(12)
+    doc.setFont('helvetica', 'bold')
+    doc.text(`Total Rides: ${filteredRides.length}`, 20, y)
+    doc.text(`Morning: ${morningRides.length}`, 80, y)
+    doc.text(`Evening: ${eveningRides.length}`, 130, y)
+    y += 15
+    
+    // Function to render batch rides
+    const renderBatchRides = (rides: typeof filteredRides, batchLabel: string, iconColor: [number, number, number]) => {
+      if (rides.length === 0) return
+      
+      // Check if we need a new page
+      if (y > 250) {
+        doc.addPage()
+        y = 20
+      }
+      
+      // Batch header
+      doc.setFillColor(...iconColor)
+      doc.rect(20, y - 5, 4, 12, 'F')
+      doc.setFontSize(14)
+      doc.setFont('helvetica', 'bold')
+      doc.text(`${batchLabel} (${rides.length} rides)`, 28, y + 3)
+      y += 15
+      
+      // Table header
+      doc.setFontSize(9)
+      doc.setFont('helvetica', 'bold')
+      doc.setFillColor(245, 245, 245)
+      doc.rect(20, y - 4, pageWidth - 40, 8, 'F')
+      doc.text('Date', 22, y)
+      doc.text('Time', 52, y)
+      doc.text('Rider Name', 80, y)
+      doc.text('Level', 130, y)
+      doc.text('Horse', 160, y)
+      y += 8
+      
+      // Sort rides by date descending
+      const sortedRides = [...rides].sort((a, b) => 
+        new Date(b.rideTime).getTime() - new Date(a.rideTime).getTime()
+      )
+      
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(8)
+      
+      sortedRides.forEach((ride) => {
+        if (y > 280) {
+          doc.addPage()
+          y = 20
+          // Re-add header on new page
+          doc.setFontSize(9)
+          doc.setFont('helvetica', 'bold')
+          doc.setFillColor(245, 245, 245)
+          doc.rect(20, y - 4, pageWidth - 40, 8, 'F')
+          doc.text('Date', 22, y)
+          doc.text('Time', 52, y)
+          doc.text('Rider Name', 80, y)
+          doc.text('Level', 130, y)
+          doc.text('Horse', 160, y)
+          y += 8
+          doc.setFont('helvetica', 'normal')
+          doc.setFontSize(8)
+        }
+        
+        const rideDate = new Date(ride.rideTime)
+        const dateStr = rideDate.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })
+        const timeStr = rideDate.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })
+        
+        doc.text(dateStr, 22, y)
+        doc.text(timeStr, 52, y)
+        doc.text(ride.riderName.substring(0, 20), 80, y)
+        doc.text(ride.riderLevel.charAt(0).toUpperCase() + ride.riderLevel.slice(1), 130, y)
+        doc.text(ride.horse.substring(0, 15), 160, y)
+        y += 6
+      })
+      
+      y += 10
+    }
+    
+    // Render morning rides
+    renderBatchRides(morningRides, 'Morning Batch', [243, 156, 18])
+    
+    // Render evening rides
+    renderBatchRides(eveningRides, 'Evening Batch', [155, 89, 182])
+    
+    // Footer on all pages
+    const pageCount = doc.getNumberOfPages()
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i)
+      doc.setFontSize(8)
+      doc.setFont('helvetica', 'italic')
+      doc.setTextColor(128, 128, 128)
+      doc.text(
+        `Generated on ${new Date().toLocaleString('en-IN')} | Page ${i} of ${pageCount}`,
+        pageWidth / 2,
+        290,
+        { align: 'center' }
+      )
+    }
+    
+    // Save
+    const fileName = `rides_report_${reportPeriod}_${new Date().toISOString().split('T')[0]}.pdf`
+    doc.save(fileName)
+    showToast('Report downloaded successfully!', 'success')
   }
 
   // Get all riders with their batch info
@@ -1640,7 +1958,7 @@ function AdminDashboard() {
                         </button>
                         <button 
                           className="export-btn"
-                          onClick={() => exportRiderPDF(rider, batchType, batchIndex)}
+                          onClick={() => exportRiderPDF(rider, batchType, batchIndex).catch(console.error)}
                           title="Export PDF"
                         >
                           Export
@@ -1794,7 +2112,7 @@ function AdminDashboard() {
                                   </button>
                                   <button 
                                     className="export-btn"
-                                    onClick={() => exportRiderPDF(rider, 'morning', index)}
+                                    onClick={() => exportRiderPDF(rider, 'morning', index).catch(console.error)}
                                     title="Export PDF"
                                   >
                                     Export
@@ -1951,7 +2269,7 @@ function AdminDashboard() {
                                   </button>
                                   <button 
                                     className="export-btn"
-                                    onClick={() => exportRiderPDF(rider, 'evening', index)}
+                                    onClick={() => exportRiderPDF(rider, 'evening', index).catch(console.error)}
                                     title="Export PDF"
                                   >
                                     Export
@@ -3088,6 +3406,62 @@ function AdminDashboard() {
         </div>
       ) : (
         <>
+          {/* Download Report Section */}
+          <div className="reports-download">
+            <div className="reports-download__row">
+              <div className="reports-download__dropdown">
+                <div 
+                  className={`reports-download__trigger ${reportPeriodDropdownOpen ? 'reports-download__trigger--open' : ''}`}
+                  onClick={() => setReportPeriodDropdownOpen(!reportPeriodDropdownOpen)}
+                >
+                  <span className="reports-download__value">
+                    {reportPeriod === '1day' && 'Today'}
+                    {reportPeriod === '1week' && '1 Week'}
+                    {reportPeriod === '1month' && '1 Month'}
+                    {reportPeriod === '2months' && '2 Months'}
+                    {reportPeriod === '3months' && '3 Months'}
+                  </span>
+                  <span className="reports-download__arrow">▼</span>
+                </div>
+                {reportPeriodDropdownOpen && (
+                  <>
+                    <div 
+                      className="reports-download__overlay" 
+                      onClick={() => setReportPeriodDropdownOpen(false)}
+                    />
+                    <div className="reports-download__menu">
+                      {[
+                        { value: '1day', label: 'Today' },
+                        { value: '1week', label: '1 Week' },
+                        { value: '1month', label: '1 Month' },
+                        { value: '2months', label: '2 Months' },
+                        { value: '3months', label: '3 Months' }
+                      ].map(option => (
+                        <div
+                          key={option.value}
+                          className={`reports-download__item ${reportPeriod === option.value ? 'reports-download__item--selected' : ''}`}
+                          onClick={() => {
+                            setReportPeriod(option.value as typeof reportPeriod)
+                            setReportPeriodDropdownOpen(false)
+                          }}
+                        >
+                          <span className="reports-download__item-name">{option.label}</span>
+                          {reportPeriod === option.value && <span className="reports-download__check">✓</span>}
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+              <button 
+                className="reports-download__btn"
+                onClick={downloadRidesReport}
+              >
+                <DownloadIcon sx={{ fontSize: 16, marginRight: '6px' }} /> Download Report
+              </button>
+            </div>
+          </div>
+
           {/* Horse Selection */}
           <div className="reports-filter">
             <label className="reports-filter__label">Select Horse:</label>
