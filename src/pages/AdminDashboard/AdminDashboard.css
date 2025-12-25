@@ -347,7 +347,8 @@
 }
 
 .admin__subtitle {
-  color: #8892b0;
+  color: var(--text-primary);
+  opacity: 0.85;
   font-size: 0.95rem;
 }
 
@@ -404,7 +405,8 @@
 
 .max-persons-dropdown__label {
   font-size: 0.8rem;
-  color: var(--text-secondary);
+  color: var(--text-primary);
+  opacity: 0.9;
   white-space: nowrap;
   font-weight: 500;
 }
@@ -441,7 +443,8 @@
 
 .max-persons-dropdown__arrow {
   font-size: 0.6rem;
-  color: var(--text-secondary);
+  color: var(--text-primary);
+  opacity: 0.8;
   transition: transform 0.2s ease;
 }
 
@@ -1988,7 +1991,8 @@
 }
 
 .riders-stat__label {
-  color: var(--text-secondary);
+  color: var(--text-primary);
+  opacity: 0.9;
   font-size: 0.85rem;
 }
 
@@ -2035,7 +2039,8 @@
 }
 
 .riders-filters__label {
-  color: #8892b0;
+  color: var(--text-primary);
+  opacity: 0.9;
   font-size: 0.9rem;
   font-weight: 500;
 }
@@ -2055,7 +2060,7 @@
   transition: all 0.2s ease;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid var(--border-color);
-  color: var(--text-secondary);
+  color: #ffffff;
 }
 
 .filter-btn:hover {
@@ -2067,16 +2072,17 @@
 .filter-btn--active {
   background: var(--accent-gradient);
   border: none;
-  color: #1a1a2e;
+  color: #1a1a2e !important;
 }
 
 .admin.theme-light .filter-btn--active {
-  color: #ffffff;
+  color: #ffffff !important;
 }
 
 .filter-btn--active:hover {
   background: var(--accent-gradient);
   opacity: 0.9;
+  color: #1a1a2e !important;
 }
 
 /* No Riders Message */
@@ -2334,6 +2340,7 @@
   margin-bottom: 1.25rem;
   padding-bottom: 0.75rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  /* flex-wrap: nowrap; */
 }
 
 .all-riders-title {
@@ -4897,18 +4904,22 @@
   }
   
   .all-riders-header {
-    flex-direction: column;
-    align-items: flex-start;
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: nowrap;
     gap: 0.5rem;
     margin-bottom: 0.75rem;
   }
   
   .all-riders-title {
     font-size: 1rem;
+    white-space: nowrap;
   }
   
   .all-riders-count {
     font-size: 0.75rem;
+    white-space: nowrap;
+    flex-shrink: 0;
   }
   
   /* Horses Page */
@@ -5597,8 +5608,8 @@
 
 .reports-filter {
   display: flex;
-  align-items: center;
-  gap: 1rem;
+  flex-direction: column;
+  gap: 0.5rem;
   padding: 1.25rem;
   background: var(--bg-card);
   border-radius: 12px;
@@ -5607,7 +5618,13 @@
 
 .reports-filter__label {
   font-weight: 600;
-  color: var(--text-secondary);
+  color: var(--text-primary);
+}
+
+.reports-filter__row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
 }
 
 .reports-filter__select {
@@ -5700,7 +5717,8 @@
 
 .reports-stat-card__label {
   font-size: 0.85rem;
-  color: var(--text-secondary);
+  color: var(--text-primary);
+  opacity: 0.9;
 }
 
 /* Reports Section Title */
@@ -5738,7 +5756,8 @@
 .reports-hours-card__label {
   display: block;
   font-size: 0.8rem;
-  color: var(--text-secondary);
+  color: var(--text-primary);
+  opacity: 0.9;
   margin-bottom: 0.5rem;
 }
 
@@ -5865,8 +5884,9 @@
 
 .reports-detail-card h4 {
   font-size: 0.9rem;
-  color: var(--text-secondary);
+  color: var(--text-primary);
   margin-bottom: 1rem;
+  font-weight: 600;
 }
 
 /* Distribution Bar */
@@ -5945,12 +5965,12 @@
 
 .reports-comparison-stat__label {
   font-size: 0.85rem;
-  color: var(--text-secondary);
+  color: var(--text-primary);
 }
 
 .reports-comparison-stat__value {
   font-weight: 600;
-  color: var(--text-primary);
+  color: #fff;
 }
 
 .reports-comparison-stat--positive .reports-comparison-stat__value {
@@ -5996,7 +6016,7 @@
 }
 
 @media (max-width: 768px) {
-  .reports-filter {
+  .reports-filter__row {
     flex-wrap: wrap;
   }
   
@@ -6030,11 +6050,43 @@
 
 @media (max-width: 480px) {
   .reports-summary {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
+  }
+  
+  .reports-stat-card {
+    padding: 0.75rem;
+    gap: 0.5rem;
+  }
+  
+  .reports-stat-card__icon {
+    width: 40px;
+    height: 40px;
+  }
+  
+  .reports-stat-card__value {
+    font-size: 1.1rem;
+  }
+  
+  .reports-stat-card__label {
+    font-size: 0.65rem;
   }
   
   .reports-hours-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
+  }
+  
+  .reports-hours-card {
+    padding: 0.75rem;
+  }
+  
+  .reports-hours-card__value {
+    font-size: 1.1rem;
+  }
+  
+  .reports-hours-card__label {
+    font-size: 0.65rem;
   }
   
   .reports-distribution__legend {

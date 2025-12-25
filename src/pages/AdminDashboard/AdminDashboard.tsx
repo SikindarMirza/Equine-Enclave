@@ -11,6 +11,14 @@ import SettingsIcon from '@mui/icons-material/Settings'
 import EditIcon from '@mui/icons-material/Edit'
 import WbSunnyIcon from '@mui/icons-material/WbSunny'
 import NightsStayIcon from '@mui/icons-material/NightsStay'
+import RefreshIcon from '@mui/icons-material/Refresh'
+import DirectionsWalkIcon from '@mui/icons-material/DirectionsWalk'
+import TrendingUpIcon from '@mui/icons-material/TrendingUp'
+import MilitaryTechIcon from '@mui/icons-material/MilitaryTech'
+import AccessTimeIcon from '@mui/icons-material/AccessTime'
+import LeaderboardIcon from '@mui/icons-material/Leaderboard'
+import WorkspacePremiumIcon from '@mui/icons-material/WorkspacePremium'
+import InboxIcon from '@mui/icons-material/Inbox'
 import './AdminDashboard.css'
 
 // Horse Icon Image Component
@@ -3083,63 +3091,65 @@ function AdminDashboard() {
           {/* Horse Selection */}
           <div className="reports-filter">
             <label className="reports-filter__label">Select Horse:</label>
-            <div className="reports-horse-dropdown">
-              <div 
-                className={`reports-horse-dropdown__trigger ${reportsHorseDropdownOpen ? 'reports-horse-dropdown__trigger--open' : ''}`}
-                onClick={() => setReportsHorseDropdownOpen(!reportsHorseDropdownOpen)}
-              >
-                <span className={`reports-horse-dropdown__value ${!selectedReportHorse ? 'reports-horse-dropdown__value--placeholder' : ''}`}>
-                  {selectedReportHorse || '-- All Horses --'}
-                </span>
-                <span className="reports-horse-dropdown__arrow">▼</span>
-              </div>
-              {reportsHorseDropdownOpen && (
-                <>
-                  <div 
-                    className="reports-horse-dropdown__overlay" 
-                    onClick={() => setReportsHorseDropdownOpen(false)}
-                  />
-                  <div className="reports-horse-dropdown__menu">
-                    <div
-                      className={`reports-horse-dropdown__item ${!selectedReportHorse ? 'reports-horse-dropdown__item--selected' : ''}`}
-                      onClick={() => {
-                        setSelectedReportHorse('')
-                        setReportsHorseDropdownOpen(false)
-                      }}
-                    >
-                      <span className="reports-horse-dropdown__item-name">All Horses</span>
-                      {!selectedReportHorse && <span className="reports-horse-dropdown__check">✓</span>}
-                    </div>
-                    {horses.map(horse => (
+            <div className="reports-filter__row">
+              <div className="reports-horse-dropdown">
+                <div 
+                  className={`reports-horse-dropdown__trigger ${reportsHorseDropdownOpen ? 'reports-horse-dropdown__trigger--open' : ''}`}
+                  onClick={() => setReportsHorseDropdownOpen(!reportsHorseDropdownOpen)}
+                >
+                  <span className={`reports-horse-dropdown__value ${!selectedReportHorse ? 'reports-horse-dropdown__value--placeholder' : ''}`}>
+                    {selectedReportHorse || '-- All Horses --'}
+                  </span>
+                  <span className="reports-horse-dropdown__arrow">▼</span>
+                </div>
+                {reportsHorseDropdownOpen && (
+                  <>
+                    <div 
+                      className="reports-horse-dropdown__overlay" 
+                      onClick={() => setReportsHorseDropdownOpen(false)}
+                    />
+                    <div className="reports-horse-dropdown__menu">
                       <div
-                        key={horse.id}
-                        className={`reports-horse-dropdown__item ${selectedReportHorse === horse.name ? 'reports-horse-dropdown__item--selected' : ''}`}
+                        className={`reports-horse-dropdown__item ${!selectedReportHorse ? 'reports-horse-dropdown__item--selected' : ''}`}
                         onClick={() => {
-                          setSelectedReportHorse(horse.name)
+                          setSelectedReportHorse('')
                           setReportsHorseDropdownOpen(false)
                         }}
                       >
-                        <span className="reports-horse-dropdown__item-name">{horse.name}</span>
-                        {selectedReportHorse === horse.name && <span className="reports-horse-dropdown__check">✓</span>}
+                        <span className="reports-horse-dropdown__item-name">All Horses</span>
+                        {!selectedReportHorse && <span className="reports-horse-dropdown__check">✓</span>}
                       </div>
-                    ))}
-                  </div>
-                </>
-              )}
+                      {horses.map(horse => (
+                        <div
+                          key={horse.id}
+                          className={`reports-horse-dropdown__item ${selectedReportHorse === horse.name ? 'reports-horse-dropdown__item--selected' : ''}`}
+                          onClick={() => {
+                            setSelectedReportHorse(horse.name)
+                            setReportsHorseDropdownOpen(false)
+                          }}
+                        >
+                          <span className="reports-horse-dropdown__item-name">{horse.name}</span>
+                          {selectedReportHorse === horse.name && <span className="reports-horse-dropdown__check">✓</span>}
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+              <button 
+                className="reports-filter__refresh"
+                onClick={fetchRides}
+                title="Refresh Data"
+              >
+                <RefreshIcon sx={{ fontSize: 16, marginRight: '4px' }} /> Refresh
+              </button>
             </div>
-            <button 
-              className="reports-filter__refresh"
-              onClick={fetchRides}
-              title="Refresh Data"
-            >
-              🔄 Refresh
-            </button>
           </div>
 
           {/* Summary Stats */}
           <div className="reports-summary">
             <div className="reports-stat-card">
-              <div className="reports-stat-card__icon">🐎</div>
+              <div className="reports-stat-card__icon"><HorseIcon size={28} /></div>
               <div className="reports-stat-card__content">
                 <span className="reports-stat-card__value">
                   {selectedReportHorse ? selectedHorseData?.totalRides || 0 : totalRidesAllHorses}
@@ -3148,7 +3158,7 @@ function AdminDashboard() {
               </div>
             </div>
             <div className="reports-stat-card reports-stat-card--beginner">
-              <div className="reports-stat-card__icon">🌱</div>
+              <div className="reports-stat-card__icon"><DirectionsWalkIcon sx={{ fontSize: 28, color: '#27ae60' }} /></div>
               <div className="reports-stat-card__content">
                 <span className="reports-stat-card__value">
                   {selectedReportHorse 
@@ -3159,7 +3169,7 @@ function AdminDashboard() {
               </div>
             </div>
             <div className="reports-stat-card reports-stat-card--intermediate">
-              <div className="reports-stat-card__icon">⭐</div>
+              <div className="reports-stat-card__icon"><TrendingUpIcon sx={{ fontSize: 28, color: '#f39c12' }} /></div>
               <div className="reports-stat-card__content">
                 <span className="reports-stat-card__value">
                   {selectedReportHorse 
@@ -3170,7 +3180,7 @@ function AdminDashboard() {
               </div>
             </div>
             <div className="reports-stat-card reports-stat-card--advanced">
-              <div className="reports-stat-card__icon">🏆</div>
+              <div className="reports-stat-card__icon"><MilitaryTechIcon sx={{ fontSize: 28, color: '#e74c3c' }} /></div>
               <div className="reports-stat-card__content">
                 <span className="reports-stat-card__value">
                   {selectedReportHorse 
@@ -3184,7 +3194,7 @@ function AdminDashboard() {
 
           {/* Hours Breakdown */}
           <div className="reports-hours">
-            <h3 className="reports-section-title">⏱️ Hours Breakdown (45 mins per ride)</h3>
+            <h3 className="reports-section-title"><AccessTimeIcon sx={{ fontSize: 20, marginRight: '8px', verticalAlign: 'middle' }} /> Hours Breakdown (45 mins per ride)</h3>
             <div className="reports-hours-grid">
               <div className="reports-hours-card">
                 <span className="reports-hours-card__label">Total Hours</span>
@@ -3227,7 +3237,7 @@ function AdminDashboard() {
 
           {/* Horse Comparison Table */}
           <div className="reports-comparison">
-            <h3 className="reports-section-title">📊 Horse Comparison</h3>
+            <h3 className="reports-section-title"><LeaderboardIcon sx={{ fontSize: 20, marginRight: '8px', verticalAlign: 'middle' }} /> Horse Comparison</h3>
             <div className="reports-table-wrapper">
               <table className="reports-table">
                 <thead>
@@ -3250,7 +3260,7 @@ function AdminDashboard() {
                     >
                       <td>
                         <div className="reports-table__horse">
-                          {index === 0 && <span className="reports-table__crown">👑</span>}
+                          {index === 0 && <span className="reports-table__crown"><WorkspacePremiumIcon sx={{ fontSize: 18, color: '#d4af37' }} /></span>}
                           {horse.horseName}
                         </div>
                       </td>
@@ -3278,7 +3288,7 @@ function AdminDashboard() {
           {/* Selected Horse Details */}
           {selectedReportHorse && selectedHorseData && (
             <div className="reports-details">
-              <h3 className="reports-section-title">🐴 {selectedReportHorse} - Detailed Analytics</h3>
+              <h3 className="reports-section-title">{selectedReportHorse} - Detailed Analytics</h3>
               <div className="reports-details-grid">
                 <div className="reports-detail-card">
                   <h4>Ride Distribution</h4>
@@ -3350,7 +3360,7 @@ function AdminDashboard() {
 
           {allRides.length === 0 && (
             <div className="reports-empty">
-              <span className="reports-empty__icon">📭</span>
+              <span className="reports-empty__icon"><InboxIcon sx={{ fontSize: 48, color: '#666' }} /></span>
               <p>No ride data available yet. Check-in riders to generate reports.</p>
             </div>
           )}
